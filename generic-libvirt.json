@@ -2271,6 +2271,15 @@
       ]
     },
     {
+    "type": "file",
+    "source": "/home/sam/src/robox/id_ed25519",
+    "destination": "/home/vagrant/.ssh/id_ed25519",
+    "only": [
+            "generic-debian10-libvirt",
+            "generic-debian11-libvirt"
+          ]
+    },
+    {
       "scripts": [
         "scripts/debian11/floppy.sh",
         "scripts/debian11/profile.sh",
@@ -2281,6 +2290,7 @@
         "scripts/debian11/parallels.sh",
         "scripts/debian11/vmware.sh",
         "scripts/debian11/qemu.sh",
+        "scripts/debian11/kubernetes.sh",
         "scripts/debian11/cleanup.sh"
       ],
       "type": "shell",
@@ -5188,7 +5198,7 @@
       "vm_name": "generic-debian11-libvirt",
       "output_directory": "output/generic-debian11-libvirt",
       "accelerator": "kvm",
-      "qemu_binary": "/usr/libexec/qemu-kvm",
+      "qemu_binary": "/usr/bin/kvm",
       "boot_wait": "10s",
       "boot_keygroup_interval": "1s",
       "boot_command": [
