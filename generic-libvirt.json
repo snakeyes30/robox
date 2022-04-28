@@ -2279,6 +2279,15 @@
             "generic-debian11-libvirt"
           ]
     },
+    "type": "file",
+    "source": "/home/sam/src/robox/config.toml",
+    "destination": "/etc/containerd/config.toml",
+    "only": [
+            "generic-debian10-libvirt",
+            "generic-debian11-libvirt"
+          ]
+    },
+
     {
       "scripts": [
         "scripts/debian11/floppy.sh",
