@@ -50,9 +50,10 @@ curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
 deb https://apt.kubernetes.io/ kubernetes-xenial main
 EOF
+sudo rm /etc/containerd/config.toml
 retry apt-get --assume-yes update
 #retry apt-get --assume-yes  install containerd.io=1.2.13-2   docker-ce=5:19.03.11~3-0~debian-buster  docker-ce-cli=5:19.03.11~3-0~debian-buster  kubelet kubeadm kubectl nfs-common dnsutils
-retry apt-get --assume-yes  install containerd.io   nfs-common dnsutils
+retry apt-get --assume-yes  install containerd   nfs-common ncdu dnsutils
 retry apt-get --assume-yes  install kubernetes-cni
 retry apt-get --assume-yes  install kubelet
 retry apt-get --assume-yes  install kubeadm
@@ -83,19 +84,75 @@ net.ipv4.ip_forward                 = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 EOF
 
+echo "fs.inotify.max_user_instances=1048" >> /etc/sysctl.d/40-max-user-watches.conf
+echo "SystemMaxUse=100M" >> /etc/systemd/journald.conf
+sudo systemctl restart systemd-journald
 # Apply sysctl params without reboot
 sudo sysctl --system
 
+sudo cp /home/vagrant/containerd_config.toml /etc/containerd/config.toml
 sudo mkdir -p /etc/containerd
-containerd config default | sudo tee /etc/containerd/config.toml
 sudo systemctl restart containerd
 
+cat <<EOF | /etc/logrotate.d/rsyslog
+/var/log/syslog
+/var/log/mail.info
+/var/log/mail.warn
+/var/log/mail.err
+/var/log/mail.log
+/var/log/daemon.log
+/var/log/kern.log
+/var/log/auth.log
+/var/log/user.log
+/var/log/lpr.log
+/var/log/cron.log
+/var/log/debug
+/var/log/messages
+{
+	rotate 4
+        size 5M
+	weekly
+	missingok
+	notifempty
+	compress
+	delaycompress
+	sharedscripts
+	postrotate
+		/usr/lib/rsyslog/rsyslog-rotate
+EOF
 
-apt-get install -y kubelet kubeadm kubectl
-apt-mark hold kubelet kubeadm kubectl
+cat << EOF| /etc/logratote.conf 
+
+# global options do not affect preceding include directives
+
+# rotate log files weekly
+weekly
+
+# keep 4 weeks worth of backlogs
+rotate 4
+
+# create new (empty) log files after rotating old ones
+create
+
+# use date as a suffix of the rotated file
+#dateext
+
+# uncomment this if you want your log files compressed
+#compress
+
+# packages drop log rotation information into this directory
+include /etc/logrotate.d
+
+# system-specific logs may also be configured here.
+EOF
 cat /etc/resolv.conf
 dig +short @8.8.8.8 k8s.gcr.io
-#sudo kubeadm config images pull -v=10
+sudo kubeadm config images pull -v=10
 update-alternatives --set iptables /usr/sbin/iptables-legacy
 update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 #sudo kubeadm config images pull -v=10 2>&1
+sudo echo "SystemMaxUse=100M" >> /etc/systemd/journald.conf
+sudo echo "$outchannel mysyslog,/var/log/syslog,1048576"  >> /etc/rsyslog.d/50-default.conf
+sudo systemctl restart systemd-journald
+sudo systemctl restart  rsyslog.service
+
