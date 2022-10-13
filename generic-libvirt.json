@@ -197,6 +197,7 @@
         "scripts/alpine38/virtualbox.sh",
         "scripts/alpine38/parallels.sh",
         "scripts/alpine38/vmware.sh",
+        "scripts/alpine38/kubernetes.sh",
         "scripts/alpine38/qemu.sh",
         "scripts/alpine38/cache.sh"
       ],
@@ -2272,22 +2273,24 @@
     },
     {
     "type": "file",
-    "source": "/home/sam/src/robox/id_ed25519",
-    "destination": "/home/vagrant/.ssh/id_ed25519",
-    "only": [
-            "generic-debian10-libvirt",
-            "generic-debian11-libvirt"
-          ]
-    },
-    "type": "file",
     "source": "/home/sam/src/robox/config.toml",
-    "destination": "/etc/containerd/config.toml",
+    "destination": "/home/vagrant/containerd_config.toml",
     "only": [
             "generic-debian10-libvirt",
+            "generic-debian11-libvirt",
+            "generic-alpine315-libvirt"
+          ]
+    },
+    {
+    "type": "file",
+    "source": "/home/sam/src/robox/id_ed25519.pub",
+    "destination": "/home/vagrant/id_ed25519.pub",
+    "only": [
+            "generic-debian10-libvirt",
+            "generic-alpine315-libvirt",
             "generic-debian11-libvirt"
           ]
     },
-
     {
       "scripts": [
         "scripts/debian11/floppy.sh",
@@ -2407,6 +2410,7 @@
         "scripts/alpine315/virtualbox.sh",
         "scripts/alpine315/parallels.sh",
         "scripts/alpine315/vmware.sh",
+        "scripts/alpine315/kubernetes.sh",
         "scripts/alpine315/qemu.sh",
         "scripts/alpine315/cache.sh"
       ],
@@ -2417,6 +2421,16 @@
       "only": [
         "generic-alpine315-libvirt"
       ]
+    },
+    {
+    "type": "file",
+    "source": "/home/sam/src/robox/config.toml",
+    "destination": "/home/vagrant/containerd_config.toml",
+    "only": [
+            "generic-debian10-libvirt",
+            "generic-debian11-libvirt",
+            "generic-alpine315-libvirt"
+          ]
     },
     {
       "type": "shell",
@@ -2718,7 +2732,7 @@
       "vm_name": "generic-alpine38-libvirt",
       "output_directory": "output/generic-alpine38-libvirt",
       "accelerator": "kvm",
-      "qemu_binary": "/usr/libexec/qemu-kvm",
+      "qemu_binary": "/usr/bin/kvm",
       "boot_wait": "60s",
       "boot_keygroup_interval": "1s",
       "boot_command": [
@@ -5226,7 +5240,7 @@
         "<enter>"
       ],
       "format": "qcow2",
-      "disk_size": "131072",
+      "disk_size": "12000",
       "disk_discard": "unmap",
       "disk_detect_zeroes": "on",
       "disk_cache": "unsafe",
@@ -5339,7 +5353,7 @@
       "vm_name": "generic-alpine315-libvirt",
       "output_directory": "output/generic-alpine315-libvirt",
       "accelerator": "kvm",
-      "qemu_binary": "/usr/libexec/qemu-kvm",
+      "qemu_binary": "/usr/bin/kvm",
       "boot_wait": "60s",
       "boot_keygroup_interval": "1s",
       "boot_command": [
@@ -5356,7 +5370,7 @@
         "chroot /mnt apk add openntpd && chroot /mnt rc-update add openntpd default && reboot<enter>"
       ],
       "format": "qcow2",
-      "disk_size": "131072",
+      "disk_size": "10000",
       "disk_discard": "unmap",
       "disk_detect_zeroes": "on",
       "disk_cache": "unsafe",
