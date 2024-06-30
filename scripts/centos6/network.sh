@@ -1,13 +1,14 @@
-#!/bin/bash -eux
+#!/bin/bash -x
 
 retry() {
   local COUNT=1
+  local DELAY=0
   local RESULT=0
   while [[ "${COUNT}" -le 10 ]]; do
     [[ "${RESULT}" -ne 0 ]] && {
-      [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput setaf 1
+      [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput setaf 1
       echo -e "\n${*} failed... retrying ${COUNT} of 10.\n" >&2
-      [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput sgr0
+      [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput sgr0
     }
     "${@}" && { RESULT=0 && break; } || RESULT="${?}"
     COUNT="$((COUNT + 1))"
@@ -18,9 +19,9 @@ retry() {
   done
 
   [[ "${COUNT}" -gt 10 ]] && {
-    [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput setaf 1
+    [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput setaf 1
     echo -e "\nThe command failed 10 times.\n" >&2
-    [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput sgr0
+    [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput sgr0
   }
 
   return "${RESULT}"
@@ -36,7 +37,7 @@ sysctl net.ipv6.conf.all.disable_ipv6=1
 printf "\n\nnet.ipv6.conf.all.disable_ipv6 = 1\n" >> /etc/sysctl.conf
 
 # Set the hostname, and then ensure it will resolve properly.
-if [[ "$PACKER_BUILD_NAME" =~ ^generic-(centos|centos6)-(vmware|hyperv|docker|libvirt|parallels|virtualbox)$ ]]; then
+if [[ "$PACKER_BUILD_NAME" =~ ^generic-(centos|centos6)-(vmware|hyperv|docker|libvirt|parallels|virtualbox)-(x64|x32|a64|a32|p64|p32|m64|m32)$ ]]; then
   sed -i -e "/HOSTNAME/d" /etc/sysconfig/network
   printf "HOSTNAME=centos6.localdomain\n" >> /etc/sysconfig/network
 
@@ -49,14 +50,14 @@ if [[ "$PACKER_BUILD_NAME" =~ ^generic-(centos|centos6)-(vmware|hyperv|docker|li
 
 else
   sed -i -e "/HOSTNAME/d" /etc/sysconfig/network
-  printf "HOSTNAME=magma.builder\n" >> /etc/sysconfig/network
+  printf "HOSTNAME=magma.localdomain\n" >> /etc/sysconfig/network
 
   if [ -f /etc/sysconfig/network-scripts/ifcfg-eth0 ]; then
     sed -i -e "/DHCP_HOSTNAME/d" /etc/sysconfig/network-scripts/ifcfg-eth0
-    printf "DHCP_HOSTNAME=\"magma.builder\"\n" >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    printf "DHCP_HOSTNAME=\"magma.localdomain\"\n" >> /etc/sysconfig/network-scripts/ifcfg-eth0
   fi
 
-  printf "\n127.0.0.1 magma.builder\n\n" >> /etc/hosts
+  printf "\n127.0.0.1 magma.localdomain\n\n" >> /etc/hosts
 
 fi
 
@@ -99,4 +100,6 @@ sed -i -e 's/\(\[ "\$comment" \] && echo "# \$comment"\)/# \1/g' /lib/udev/write
 sed -i -e 's/\(echo "SUBSYSTEM==\\\"net\\\", ACTION==\\\"add\\\"\$match, NAME\=\\\"\$name\\\""\)/# \1/g' /lib/udev/write_net_rules
 
 # Time to reboot.
-$(shutdown -r +1) &
+(shutdown -r +1) &
+exit 0
+

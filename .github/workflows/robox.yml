@@ -1,0 +1,172 @@
+name: Robox Validate
+
+on: 
+  push:
+  pull_request:
+  schedule:
+    - cron: '0 12 * * *'
+
+jobs:
+  Build:
+    runs-on: ubuntu-20.04
+    env:
+        LANG: en_US.UTF-8
+        LANGUAGE: en_US:en
+        LC_ALL: en_US.UTF-8
+    steps:
+    - uses: actions/checkout@master
+    - name: Increase Limits
+      run: |
+        sudo sysctl -q vm.overcommit_ratio=100
+        sudo sysctl -q net.unix.max_dgram_qlen=64
+        sudo prlimit --pid $$ --nproc=65536:65536
+        sudo prlimit --pid $$ --nofile=500000:500000
+        printf "DefaultLimitNPROC=65536:65536\n" | sudo tee -a /etc/systemd/user.conf > /dev/null || exit 1
+        printf "DefaultLimitNPROC=65536:65536\n" | sudo tee -a /etc/systemd/system.conf > /dev/null || exit 1
+        printf "DefaultLimitNOFILE=500000:500000\n" | sudo tee -a /etc/systemd/user.conf > /dev/null || exit 1
+        printf "DefaultLimitNOFILE=500000:500000\n" | sudo tee -a /etc/systemd/system.conf > /dev/null || exit 1
+        sudo systemctl daemon-reload
+        systemctl --user daemon-reload
+    - name: Increase Swap
+      run: |
+        sudo dd if=/dev/zero of=/swap bs=1M count=4096 status=none
+        sudo chmod 600 /swap
+        sudo mkswap /swap
+        sudo swapon /swap
+    - name: Install Dependencies
+      env: 
+        DEBIAN_FRONTEND: noninteractive
+        DEBCONF_NONINTERACTIVE_SEEN: true
+      run: |
+        curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+        sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+        sudo apt-get update
+        sudo apt-get --assume-yes install packer
+        packer plugins install github.com/hashicorp/qemu
+        packer plugins install github.com/hashicorp/hyperv
+        packer plugins install github.com/hashicorp/docker
+        packer plugins install github.com/hashicorp/vmware
+        packer plugins install github.com/hashicorp/vagrant
+        packer plugins install github.com/hashicorp/parallels
+        packer plugins install github.com/hashicorp/virtualbox
+    - name: Validate Generic Box Configurations
+      env:
+        GOGC: 50
+        PACKER_LOG: 1
+        GOMAXPROCS: 1
+        VERSION: 1.0.0
+      run: |
+        date +"%nStarting generic box validation at %r on %x%n"
+        sudo prlimit --pid $$ --nproc=65536:65536
+        sudo prlimit --pid $$ --nofile=500000:500000
+        export PACKER_LOG_PATH=generic-docker-x64.txt ; packer validate generic-docker-x64.json &>> packer-validate.txt && printf "File  + generic-docker-x64.json\n" || { printf "File  - generic-docker-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-docker-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-hyperv-x64.txt ; packer validate generic-hyperv-x64.json &>> packer-validate.txt && printf "File  + generic-hyperv-x64.json\n" || { printf "File  - generic-hyperv-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-hyperv-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-parallels-x64.txt ; packer validate generic-parallels-x64.json &>> packer-validate.txt && printf "File  + generic-parallels-x64.json\n" || { printf "File  - generic-parallels-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-parallels-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-vmware-x32.txt ; packer validate generic-vmware-x32.json &>> packer-validate.txt && printf "File  + generic-vmware-x32.json\n" || { printf "File  - generic-vmware-x32.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-vmware-x32.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-vmware-x64.txt ; packer validate generic-vmware-x64.json &>> packer-validate.txt && printf "File  + generic-vmware-x64.json\n" || { printf "File  - generic-vmware-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-vmware-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-virtualbox-x32.txt ; packer validate generic-virtualbox-x32.json &>> packer-validate.txt && printf "File  + generic-virtualbox-x32.json\n" || { printf "File  - generic-virtualbox-x32.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-virtualbox-x32.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-virtualbox-x64.txt ; packer validate generic-virtualbox-x64.json &>> packer-validate.txt && printf "File  + generic-virtualbox-x64.json\n" || { printf "File  - generic-virtualbox-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-virtualbox-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-libvirt-x32.txt ; packer validate generic-libvirt-x32.json &>> packer-validate.txt && printf "File  + generic-libvirt-x32.json\n" || { printf "File  - generic-libvirt-x32.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-libvirt-x32.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-libvirt-x64.txt ; packer validate generic-libvirt-x64.json &>> packer-validate.txt && printf "File  + generic-libvirt-x64.json\n" || { printf "File  - generic-libvirt-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-libvirt-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-libvirt-a32.txt ; packer validate generic-libvirt-a32.json &>> packer-validate.txt && printf "File  + generic-libvirt-a32.json\n" || { printf "File  - generic-libvirt-a32.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-libvirt-a32.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-libvirt-a64.txt ; packer validate generic-libvirt-a64.json &>> packer-validate.txt && printf "File  + generic-libvirt-a64.json\n" || { printf "File  - generic-libvirt-a64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-libvirt-a64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-libvirt-p64.txt ; packer validate generic-libvirt-p64.json &>> packer-validate.txt && printf "File  + generic-libvirt-p64.json\n" || { printf "File  - generic-libvirt-p64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-libvirt-p64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=generic-libvirt-m64.txt ; packer validate generic-libvirt-m64.json &>> packer-validate.txt && printf "File  + generic-libvirt-m64.json\n" || { printf "File  - generic-libvirt-m64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate generic-libvirt-m64.json ; exit 1 ; }
+        date +"%nFinished generic box validation at %r on %x%n"
+    - name: Validate Magma Box Configurations
+      env:
+        GOGC: 50
+        PACKER_LOG: 1
+        GOMAXPROCS: 1
+        VERSION: 1.0.0
+      run: |
+        date +"%nStarting magma box validation at %r on %x%n"
+        sudo prlimit --pid $$ --nproc=65536:65536
+        sudo prlimit --pid $$ --nofile=500000:500000
+        export PACKER_LOG_PATH=magma-docker-x64.txt ; packer validate magma-docker-x64.json &>> packer-validate.txt && printf "File  + magma-docker-x64.json\n" || { printf "File  - magma-docker-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate magma-docker-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=magma-hyperv-x64.txt ; packer validate magma-hyperv-x64.json &>> packer-validate.txt && printf "File  + magma-hyperv-x64.json\n" || { printf "File  - magma-hyperv-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate magma-hyperv-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=magma-libvirt-x64.txt ; packer validate magma-libvirt-x64.json &>> packer-validate.txt && printf "File  + magma-libvirt-x64.json\n" || { printf "File  - magma-libvirt-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate magma-libvirt-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=magma-virtualbox-x64.txt ; packer validate magma-virtualbox-x64.json &>> packer-validate.txt && printf "File  + magma-virtualbox-x64.json\n" || { printf "File  - magma-virtualbox-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate magma-virtualbox-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=magma-vmware-x64.txt ; packer validate magma-vmware-x64.json &>> packer-validate.txt && printf "File  + magma-vmware-x64.json\n" || { printf "File  - magma-vmware-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate magma-vmware-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=developer-hyperv-x64.txt ; packer validate developer-hyperv-x64.json &>> packer-validate.txt && printf "File  + developer-hyperv-x64.json\n" || { printf "File  - developer-hyperv-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate developer-hyperv-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=developer-libvirt-x64.txt ; packer validate developer-libvirt-x64.json &>> packer-validate.txt && printf "File  + developer-libvirt-x64.json\n" || { printf "File  - developer-libvirt-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate developer-libvirt-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=developer-ova-x64.txt ; packer validate developer-ova-x64.json &>> packer-validate.txt && printf "File  + developer-ova-x64.json\n" || { printf "File  - developer-ova-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate developer-ova-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=developer-virtualbox-x64.txt ; packer validate developer-virtualbox-x64.json &>> packer-validate.txt && printf "File  + developer-virtualbox-x64.json\n" || { printf "File  - developer-virtualbox-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate developer-virtualbox-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=developer-vmware-x64.txt ; packer validate developer-vmware-x64.json &>> packer-validate.txt && printf "File  + developer-vmware-x64.json\n" || { printf "File  - developer-vmware-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate developer-vmware-x64.json ; exit 1 ; }
+        date +"%nFinished magma box validation at %r on %x%n"
+    - name: Validate Lineage Box Configurations
+      env:
+        GOGC: 50
+        PACKER_LOG: 1
+        GOMAXPROCS: 1
+        VERSION: 1.0.0
+      run: |
+        date +"%nStarting lineage box validation at %r on %x%n"
+        sudo prlimit --pid $$ --nproc=65536:65536
+        sudo prlimit --pid $$ --nofile=500000:500000
+        export PACKER_LOG_PATH=lineage-hyperv-x64.txt ; packer validate lineage-hyperv-x64.json &>> packer-validate.txt && printf "File  + lineage-hyperv-x64.json\n" || { printf "File  - lineage-hyperv-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate lineage-hyperv-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=lineage-libvirt-x64.txt ; packer validate lineage-libvirt-x64.json &>> packer-validate.txt && printf "File  + lineage-libvirt-x64.json\n" || { printf "File  - lineage-libvirt-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate lineage-libvirt-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=lineage-virtualbox-x64.txt ; packer validate lineage-virtualbox-x64.json &>> packer-validate.txt && printf "File  + lineage-virtualbox-x64.json\n" || { printf "File  - lineage-virtualbox-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate lineage-virtualbox-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=lineage-vmware-x64.txt ; packer validate lineage-vmware-x64.json &>> packer-validate.txt && printf "File  + lineage-vmware-x64.json\n" || { printf "File  - lineage-vmware-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate lineage-vmware-x64.json ; exit 1 ; }
+        date +"%nFinished lineage box validation at %r on %x%n"
+    - name: Validate Cache Configuration
+      env:
+        GOGC: 50
+        PACKER_LOG: 1
+        GOMAXPROCS: 1
+        VERSION: 1.0.0
+      run: |
+        date +"%nStarting cache box validation at %r on %x%n"
+        sudo prlimit --pid $$ --nproc=65536:65536
+        sudo prlimit --pid $$ --nofile=500000:500000
+        export PACKER_LOG_PATH=packer-cache-x32.txt ; packer validate packer-cache-x32.json &>> packer-validate.txt && printf "File  + packer-cache-x32.json\n" || { printf "File  - packer-cache-x32.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate packer-cache-x32.json ; exit 1 ; }
+        export PACKER_LOG_PATH=packer-cache-x64.txt ; packer validate packer-cache-x64.json &>> packer-validate.txt && printf "File  + packer-cache-x64.json\n" || { printf "File  - packer-cache-x64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate packer-cache-x64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=packer-cache-a32.txt ; packer validate packer-cache-a32.json &>> packer-validate.txt && printf "File  + packer-cache-a32.json\n" || { printf "File  - packer-cache-a32.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate packer-cache-a32.json ; exit 1 ; }
+        export PACKER_LOG_PATH=packer-cache-a64.txt ; packer validate packer-cache-a64.json &>> packer-validate.txt && printf "File  + packer-cache-a64.json\n" || { printf "File  - packer-cache-a64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate packer-cache-a64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=packer-cache-p64.txt ; packer validate packer-cache-p64.json &>> packer-validate.txt && printf "File  + packer-cache-p64.json\n" || { printf "File  - packer-cache-p64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate packer-cache-p64.json ; exit 1 ; }
+        export PACKER_LOG_PATH=packer-cache-m64.txt ; packer validate packer-cache-m64.json &>> packer-validate.txt && printf "File  + packer-cache-m64.json\n" || { printf "File  - packer-cache-m64.json\n\n\n" ; unset PACKER_LOG ; unset PACKER_LOG_PATH ; packer validate packer-cache-m64.json ; exit 1 ; }
+        date +"%nFinished Cache box validation at %r on %x%n"
+    - name: Archive Log Files
+      uses: actions/upload-artifact@v3
+      if: ${{ always() }}
+      with:
+        name: validate-logs
+        retention-days: 14
+        path: |
+          packer-validate.txt
+          generic-docker-x64.txt
+          generic-hyperv-x64.txt
+          generic-parallels-x64.txt
+          generic-vmware-x32.txt
+          generic-vmware-x64.txt
+          generic-virtualbox-x32.txt
+          generic-virtualbox-x64.txt
+          generic-libvirt-x32.txt
+          generic-libvirt-x64.txt
+          generic-libvirt-a32.txt
+          generic-libvirt-a64.txt
+          generic-libvirt-p64.txt
+          generic-libvirt-m64.txt
+          magma-docker-x64.txt
+          magma-hyperv-x64.txt
+          magma-libvirt-x64.txt
+          magma-virtualbox-x64.txt
+          magma-vmware-x64.txt
+          developer-hyperv-x64.txt
+          developer-libvirt-x64.txt
+          developer-ova-x64.txt
+          developer-virtualbox-x64.txt
+          developer-vmware-x64.txt
+          lineage-hyperv-x64.txt
+          lineage-libvirt-x64.txt
+          lineage-virtualbox-x64.txt
+          lineage-vmware-x64.txt
+          packer-cache-x32.txt
+          packer-cache-x64.txt
+          packer-cache-a32.txt
+          packer-cache-a64.txt
+          packer-cache-p64.txt
+          packer-cache-m64.txt
+
+          
+

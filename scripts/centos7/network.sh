@@ -4,12 +4,12 @@
 printf "nameserver 4.2.2.1\nnameserver 4.2.2.2\nnameserver 208.67.220.220\n"> /etc/resolv.conf
 
 # Set the hostname, and then ensure it will resolve properly.
-if [[ "$PACKER_BUILD_NAME" =~ ^generic-centos7-(vmware|hyperv|libvirt|parallels|virtualbox)$ ]]; then
+if [[ "$PACKER_BUILD_NAME" =~ ^generic-centos7-(vmware|hyperv|libvirt|parallels|virtualbox)-(x64|x32|a64|a32|p64|p32|m64|m32)$ ]]; then
   printf "centos7.localdomain\n" > /etc/hostname
   printf "\n127.0.0.1 centos7.localdomain\n\n" >> /etc/hosts
 else
-  printf "magma.builder\n" > /etc/hostname
-  printf "\n127.0.0.1 magma.builder\n\n" >> /etc/hosts
+  printf "magma.localdomain\n" > /etc/hostname
+  printf "\n127.0.0.1 magma.localdomain\n\n" >> /etc/hosts
 fi
 
 # Disable IPv6 or yum will resolve mirror names to IPv6 address and then fail to connect with them.
@@ -42,7 +42,7 @@ fi
 
 printf "Fixing the problem with slow DNS queries.\n"
 
-cat >> /etc/NetworkManager/dispatcher.d/fix-slow-dns <<EOF
+cat >> /etc/NetworkManager/dispatcher.d/fix-slow-dns <<-EOF
 #!/bin/bash
 echo "options single-request-reopen" >> /etc/resolv.conf
 EOF

@@ -1,21 +1,21 @@
 #!/bin/bash
 
+# Setup the locale, and arrogantly assume everyone lives in the US.
+dnf --assumeyes install glibc-locale-source
+localedef -c -i en_US -f UTF-8 en_US.UTF-8
+dnf --assumeyes remove glibc-locale-source
+
 # Cleanup.
 rpm -Va --nofiles --nodigest
 dnf clean all
 
 # Stop services to avoid tarring sockets.
-systemctl stop abrt
-systemctl stop dbus
-systemctl stop mariadb
-systemctl stop postfix
+systemctl --quiet is-active abrt.service && systemctl stop abrt.service
+systemctl --quiet is-active dbus.service && systemctl stop dbus.service
+systemctl --quiet is-active mariadb.service && systemctl stop mariadb.service
+systemctl --quiet is-active postfix.service && systemctl stop postfix.service
 
-awk '(NF==0&&!done){print "override_install_langs='$LANG'\ntsflags=nodocs";done=1}{print}' \
-    < /etc/dnf.conf > /etc/dnf.conf.new
-mv /etc/dnf.conf.new /etc/dnf.conf
 echo 'container' > /etc/dnf/vars/infra
-
-rm -f /usr/lib/locale/locale-archive
 
 # Setup the login message instructions.
 if [[ ! "$PACKER_BUILD_NAME" =~ ^generic-.*$ ]]; then
@@ -24,9 +24,6 @@ fi
 
 # Add a profile directive to send docker logins to the home directory.
 printf "if [ \"\$PS1\" ]; then\n  cd \$HOME\nfi\n" > /etc/profile.d/home.sh
-
-# Setup the locale, and arrogantly assume everyone lives in the US.
-localedef -v -c -i en_US -f UTF-8 en_US.UTF-8
 
 rm -rf /var/cache/dnf/*
 rm -f /tmp/ks-script*
@@ -44,7 +41,7 @@ rm /var/run/nologin
 date --utc > /etc/docker_box_build_time
 
 # Randomize the root password and then lock the root account.
-dd if=/dev/urandom count=50 | md5sum | passwd --stdin root
+dd if=/dev/urandom count=50 | md5sum | awk -F' ' '{print $1}' | passwd --stdin root
 passwd --lock root
 
 if [ -f /etc/machine-id ]; then
@@ -59,15 +56,15 @@ printf "/tmp/excludes\n" > /tmp/excludes
 printf "/tmp/$PACKER_BUILD_NAME.tar\n" >> /tmp/excludes
 
 # Exclude all of the special files from the tarball.
-find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type b -print >> /tmp/excludes
-find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type c -print >> /tmp/excludes
-find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type p -print >> /tmp/excludes
-find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type s -print >> /tmp/excludes
-find /var/log/ -type f -print >> /tmp/excludes
-find /lib/modules/ -mindepth 1 -print >> /tmp/excludes
-find /usr/src/kernels/ -mindepth 1 -print >> /tmp/excludes
-find /var/lib/dnf/dnfdb/ -mindepth 1 -print >> /tmp/excludes
-find /etc/sysconfig/network-scripts/ -name "ifcfg-*" -print >> /tmp/excludes
+find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type b -print 1>>/tmp/excludes 2>/dev/null
+find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type c -print 1>>/tmp/excludes 2>/dev/null
+find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type p -print 1>>/tmp/excludes 2>/dev/null
+find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type s -print 1>>/tmp/excludes 2>/dev/null
+find /var/log/ -type f -print 1>>/tmp/excludes 2>/dev/null
+find /lib/modules/ -mindepth 1 -print 1>>/tmp/excludes 2>/dev/null
+find /usr/src/kernels/ -mindepth 1 -print 1>>/tmp/excludes 2>/dev/null
+find /var/lib/dnf/dnfdb/ -mindepth 1 -print 1>>/tmp/excludes 2>/dev/null
+find /etc/sysconfig/network-scripts/ -name "ifcfg-*" -print 1>>/tmp/excludes 2>/dev/null
 find /tmp -type f -or -type d -print | grep --invert-match --extended-regexp "^/tmp/$|^/tmp$" >> /tmp/excludes
 
 # Remove the files associated with these packages since containers don't need them.
@@ -83,7 +80,8 @@ sed --in-place "s/^\///g" /tmp/excludes
 # Tarball the filesystem.
 tar --create --numeric-owner --preserve-permissions --one-file-system \
   --directory=/ --file=/tmp/$PACKER_BUILD_NAME.tar --exclude=/etc/firewalld \
-  --exclude=/boot --exclude=/proc --exclude=/lost+found --exclude=/mnt --exclude=/sys -X /tmp/excludes /
+  --exclude=/boot --exclude=/proc --exclude=/lost+found --exclude=/mnt --exclude=/sys \
+  --exclude=/var/run/udev --exclude=/run/udev -X /tmp/excludes /
 
 if [ $? != 0 ] || [ ! -f /tmp/$PACKER_BUILD_NAME.tar ]; then
   printf "\n\nTarball generation failed.\n\n"

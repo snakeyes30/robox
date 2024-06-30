@@ -1,0 +1,216 @@
+{
+  "variables": {
+    "box_version": "{{env `VERSION`}}"
+  },
+  "provisioners": [
+    {
+      "scripts": [
+        "scripts/debian12/apt.sh",
+        "scripts/debian12/network.sh"
+      ],
+      "type": "shell",
+      "timeout": "120m",
+      "start_retry_timeout": "15m",
+      "expect_disconnect": "true",
+      "only": [
+        "generic-debian12-libvirt-a32"
+      ]
+    },
+    {
+      "scripts": [
+        "scripts/debian12/floppy.sh",
+        "scripts/debian12/profile.sh",
+        "scripts/debian12/vagrant.sh",
+        "scripts/debian12/motd.sh",
+        "scripts/debian12/fixtty.sh",
+        "scripts/debian12/virtualbox.sh",
+        "scripts/debian12/parallels.sh",
+        "scripts/debian12/vmware.sh",
+        "scripts/debian12/qemu.sh",
+        "scripts/debian12/cleanup.sh"
+      ],
+      "type": "shell",
+      "timeout": "120m",
+      "pause_before": "120s",
+      "start_retry_timeout": "15m",
+      "expect_disconnect": "true",
+      "only": [
+        "generic-debian12-libvirt-a32"
+      ]
+    },
+    {
+      "scripts": [
+        "scripts/common/motd.sh",
+        "scripts/common/keys.sh",
+        "scripts/common/machine.sh",
+        "scripts/common/leases.sh",
+        "scripts/common/localtime.sh"
+      ],
+      "type": "shell",
+      "timeout": "120m",
+      "start_retry_timeout": "15m",
+      "expect_disconnect": "true"
+    },
+    {
+      "scripts": [
+        "scripts/common/zerodisk.sh"
+      ],
+      "type": "shell",
+      "timeout": "720m",
+      "start_retry_timeout": "15m",
+      "expect_disconnect": "true"
+    },
+    {
+      "scripts": [
+        "scripts/common/lockout.sh"
+      ],
+      "type": "shell",
+      "timeout": "120m",
+      "start_retry_timeout": "15m",
+      "expect_disconnect": "true"
+    }
+  ],
+  "builders": [
+    {
+      "type": "qemu",
+      "name": "generic-debian12-libvirt-a32",
+      "vm_name": "generic-debian12-libvirt-a32",
+      "output_directory": "output/generic-debian12-libvirt-a32",
+      "qemu_binary": "qemu-system-arm",
+      "boot_keygroup_interval": "1s",
+      "boot_wait": "10s",
+      "boot_command": [
+        "<tab><wait10><tab><wait10><tab><wait10><tab><wait10><tab><wait10><tab><wait10>",
+        "<tab><wait10><tab><wait10><tab><wait10>c<wait><enter>",
+        "setparams 'Install'<enter><wait>",
+        "set background_color=black<enter><wait>",
+        "linux /install.ahf/vmlinuz auto=true priority=high --- console=tty1 ",
+        "preseed/url=http://{{.HTTPIP}}:{{.HTTPPort}}/generic.debian12.vagrant.arm.cfg ",
+        "ipv6.disable_ipv6=1 net.ifnames=0 biosdevname=0 hostname=debian12 domain=localdomain<enter><wait>",
+        "initrd /install.ahf/initrd.gz<enter><wait>",
+        "boot<enter><wait>"
+      ],
+      "qemuargs": [
+        [
+          "-display",
+          "gtk"
+        ],
+        [
+          "-machine",
+          "virt,accel=kvm:tcg,gic-version=3,dump-guest-core=off,acpi=on,usb=on"
+        ],
+        [
+          "-cpu",
+          "max"
+        ],
+        [
+          "-overcommit",
+          "mem-lock=on"
+        ],
+        [
+          "-device",
+          "ramfb"
+        ],
+        [
+          "-boot",
+          "strict=off,order=cd,menu=off"
+        ],
+        [
+          "-device",
+          "qemu-xhci"
+        ],
+        [
+          "-device",
+          "driver=virtio-keyboard-pci"
+        ],
+        [
+          "-device",
+          "driver=virtio-mouse-pci"
+        ],
+        [
+          "-device",
+          "driver=usb-kbd"
+        ],
+        [
+          "-device",
+          "driver=usb-mouse"
+        ],
+        [
+          "-d",
+          "unimp,guest_errors"
+        ],
+        [
+          "-D",
+          "qemu-error-log-a32.txt"
+        ]
+      ],
+      "efi_boot": true,
+      "efi_drop_efivars": true,
+      "efi_firmware_code": "/usr/share/edk2/arm/QEMU_EFI-pflash.raw",
+      "efi_firmware_vars": "/usr/share/edk2/arm/vars-template-pflash.raw",
+      "format": "qcow2",
+      "disk_size": "131072",
+      "disk_discard": "unmap",
+      "disk_detect_zeroes": "on",
+      "disk_cache": "unsafe",
+      "disk_image": false,
+      "disk_compression": true,
+      "disk_interface": "virtio",
+      "net_device": "e1000",
+      "cpus": 4,
+      "memory": 2048,
+      "http_directory": "http",
+      "headless": true,
+      "iso_url": "https://cdimage.debian.org/cdimage/release/12.4.0/armhf/iso-cd/debian-12.4.0-armhf-netinst.iso",
+      "iso_checksum": "sha256:f78b2c0a694e6f877af330e0615a76806b1d4feed8afaca42fc56e4140cf0080",
+      "ssh_username": "root",
+      "ssh_password": "vagrant",
+      "ssh_port": 22,
+      "ssh_handshake_attempts": 1000,
+      "ssh_timeout": "9800s",
+      "shutdown_command": "echo 'vagrant' | sudo -S shutdown -P now"
+    }
+  ],
+  "post-processors": [
+    [
+      {
+        "type": "vagrant",
+        "compression_level": 9,
+        "keep_input_artifact": false,
+        "vagrantfile_template": "tpl/generic-{{split build_name \"-\" 1}}.rb",
+        "output": "output/generic-{{split build_name \"-\" 1}}-{{split build_name \"-\" 2}}-{{split build_name \"-\" 3}}-{{user `box_version`}}.box",
+        "include": [
+          "tpl/generic/info.json"
+        ]
+      },
+      {
+        "type": "checksum",
+        "checksum_types": [
+          "sha256"
+        ],
+        "keep_input_artifact": false,
+        "output": "output/generic-{{split build_name \"-\" 1}}-{{split build_name \"-\" 2}}-{{split build_name \"-\" 3}}-{{user `box_version`}}.box.sha256"
+      }
+    ],
+    [
+      {
+        "type": "vagrant",
+        "compression_level": 9,
+        "keep_input_artifact": false,
+        "vagrantfile_template": "tpl/roboxes-{{split build_name \"-\" 1}}.rb",
+        "output": "output/roboxes-{{split build_name \"-\" 1}}-{{split build_name \"-\" 2}}-{{split build_name \"-\" 3}}-{{user `box_version`}}.box",
+        "include": [
+          "tpl/roboxes/info.json"
+        ]
+      },
+      {
+        "type": "checksum",
+        "checksum_types": [
+          "sha256"
+        ],
+        "keep_input_artifact": false,
+        "output": "output/roboxes-{{split build_name \"-\" 1}}-{{split build_name \"-\" 2}}-{{split build_name \"-\" 3}}-{{user `box_version`}}.box.sha256"
+      }
+    ]
+  ]
+}

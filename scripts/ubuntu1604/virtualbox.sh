@@ -2,12 +2,13 @@
 
 retry() {
   local COUNT=1
+  local DELAY=0
   local RESULT=0
   while [[ "${COUNT}" -le 10 ]]; do
     [[ "${RESULT}" -ne 0 ]] && {
-      [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput setaf 1
+      [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput setaf 1
       echo -e "\n${*} failed... retrying ${COUNT} of 10.\n" >&2
-      [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput sgr0
+      [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput sgr0
     }
     "${@}" && { RESULT=0 && break; } || RESULT="${?}"
     COUNT="$((COUNT + 1))"
@@ -18,9 +19,9 @@ retry() {
   done
 
   [[ "${COUNT}" -gt 10 ]] && {
-    [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput setaf 1
+    [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput setaf 1
     echo -e "\nThe command failed 10 times.\n" >&2
-    [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput sgr0
+    [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput sgr0
   }
 
   return "${RESULT}"
@@ -38,6 +39,25 @@ if [[ `dmidecode -s system-product-name` != "VirtualBox" ]]; then
     exit 0
 fi
 
+# The Ubuntu cloud tools package automatically installs kernel drivers and background
+# services for several virtualization platforms. Crude runtime dependency checks should
+# block unnecessary drivers from loading, and unnecessary services from starting, but this 
+# strategy still generates spurious log messages, along with an (albeit slight) performance
+# penalty. So reduce noise, and avoid any performance penalties we disable and mask 
+# guest drivers/services which don't match the target virtualization platform.
+systemctl --quiet is-enabled hv-fcopy-daemon.service &> /dev/null && \
+  ( systemctl disable hv-fcopy-daemon.service ; systemctl mask hv-fcopy-daemon.service ) || \
+  echo "hv-fcopy-daemon.service already disabled" &> /dev/null
+systemctl --quiet is-enabled hv-kvp-daemon.service &> /dev/null && \
+  ( systemctl disable hv-kvp-daemon.service ; systemctl mask hv-kvp-daemon.service ) || \
+  echo "hv-kvp-daemon.service already disabled" &> /dev/null
+systemctl --quiet is-enabled hv-vss-daemon.service &> /dev/null && \
+  ( systemctl disable hv-vss-daemon.service ; systemctl mask hv-vss-daemon.service ) || \
+  echo "hv-vss-daemon.service already disabled" &> /dev/null
+systemctl --quiet is-enabled open-vm-tools.service &> /dev/null && \
+  ( systemctl disable open-vm-tools.service ; systemctl mask open-vm-tools.service ) || \
+  echo "open-vm-tools.service already disabled" &> /dev/null
+
 # Install the Virtual Box Tools from the Linux Guest Additions ISO.
 printf "Installing the Virtual Box Tools.\n"
 
@@ -45,7 +65,7 @@ printf "Installing the Virtual Box Tools.\n"
 export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
 
-retry apt-get --assume-yes install virtualbox-guest-utils; error
+retry apt-get --assume-yes install virtualbox-guest-utils ; error
 
 # Read in the version number.
 export VBOXVERSION=`cat /root/VBoxVersion.txt`

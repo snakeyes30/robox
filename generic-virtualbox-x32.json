@@ -13,7 +13,7 @@
       "start_retry_timeout": "15m",
       "expect_disconnect": "true",
       "only": [
-        "generic-debian8-x32-virtualbox"
+        "generic-debian8-virtualbox-x32"
       ]
     },
     {
@@ -35,7 +35,7 @@
       "start_retry_timeout": "15m",
       "expect_disconnect": "true",
       "only": [
-        "generic-debian8-x32-virtualbox"
+        "generic-debian8-virtualbox-x32"
       ]
     },
     {
@@ -48,7 +48,7 @@
       "start_retry_timeout": "15m",
       "expect_disconnect": "true",
       "only": [
-        "generic-debian9-x32-virtualbox"
+        "generic-debian9-virtualbox-x32"
       ]
     },
     {
@@ -71,7 +71,7 @@
       "start_retry_timeout": "15m",
       "expect_disconnect": "true",
       "only": [
-        "generic-debian9-x32-virtualbox"
+        "generic-debian9-virtualbox-x32"
       ]
     },
     {
@@ -84,7 +84,7 @@
       "start_retry_timeout": "15m",
       "expect_disconnect": "true",
       "only": [
-        "generic-debian10-x32-virtualbox"
+        "generic-debian10-virtualbox-x32"
       ]
     },
     {
@@ -106,7 +106,7 @@
       "start_retry_timeout": "15m",
       "expect_disconnect": "true",
       "only": [
-        "generic-debian10-x32-virtualbox"
+        "generic-debian10-virtualbox-x32"
       ]
     },
     {
@@ -119,7 +119,7 @@
       "start_retry_timeout": "15m",
       "expect_disconnect": "true",
       "only": [
-        "generic-debian11-x32-virtualbox"
+        "generic-debian11-virtualbox-x32"
       ]
     },
     {
@@ -141,7 +141,42 @@
       "start_retry_timeout": "15m",
       "expect_disconnect": "true",
       "only": [
-        "generic-debian11-x32-virtualbox"
+        "generic-debian11-virtualbox-x32"
+      ]
+    },
+    {
+      "scripts": [
+        "scripts/debian12/apt.sh",
+        "scripts/debian12/network.sh"
+      ],
+      "type": "shell",
+      "timeout": "120m",
+      "start_retry_timeout": "15m",
+      "expect_disconnect": "true",
+      "only": [
+        "generic-debian12-virtualbox-x32"
+      ]
+    },
+    {
+      "scripts": [
+        "scripts/debian12/floppy.sh",
+        "scripts/debian12/profile.sh",
+        "scripts/debian12/vagrant.sh",
+        "scripts/debian12/motd.sh",
+        "scripts/debian12/fixtty.sh",
+        "scripts/debian12/virtualbox.sh",
+        "scripts/debian12/parallels.sh",
+        "scripts/debian12/vmware.sh",
+        "scripts/debian12/qemu.sh",
+        "scripts/debian12/cleanup.sh"
+      ],
+      "type": "shell",
+      "timeout": "120m",
+      "pause_before": "120s",
+      "start_retry_timeout": "15m",
+      "expect_disconnect": "true",
+      "only": [
+        "generic-debian12-virtualbox-x32"
       ]
     },
     {
@@ -163,9 +198,9 @@
   "builders": [
     {
       "type": "virtualbox-iso",
-      "name": "generic-debian8-x32-virtualbox",
-      "vm_name": "generic-debian8-x32-virtualbox",
-      "output_directory": "output/generic-debian8-x32-virtualbox",
+      "name": "generic-debian8-virtualbox-x32",
+      "vm_name": "generic-debian8-virtualbox-x32",
+      "output_directory": "output/generic-debian8-virtualbox-x32",
       "boot_wait": "10s",
       "boot_keygroup_interval": "1s",
       "boot_command": [
@@ -194,6 +229,7 @@
           "64"
         ]
       ],
+      "hard_drive_interface": "sata",
       "guest_os_type": "Debian",
       "http_directory": "http",
       "headless": true,
@@ -205,6 +241,7 @@
       "ssh_username": "root",
       "ssh_password": "vagrant",
       "ssh_port": 22,
+      "ssh_handshake_attempts": 1000,
       "ssh_timeout": "3600s",
       "shutdown_command": "echo 'vagrant' | sudo -S shutdown -P now",
       "guest_additions_url": "https://download.virtualbox.org/virtualbox/5.2.44/VBoxGuestAdditions_5.2.44.iso",
@@ -215,9 +252,9 @@
     },
     {
       "type": "virtualbox-iso",
-      "name": "generic-debian9-x32-virtualbox",
-      "vm_name": "generic-debian9-x32-virtualbox",
-      "output_directory": "output/generic-debian9-x32-virtualbox",
+      "name": "generic-debian9-virtualbox-x32",
+      "vm_name": "generic-debian9-virtualbox-x32",
+      "output_directory": "output/generic-debian9-virtualbox-x32",
       "boot_wait": "10s",
       "boot_keygroup_interval": "1s",
       "boot_command": [
@@ -246,6 +283,7 @@
           "64"
         ]
       ],
+      "hard_drive_interface": "sata",
       "guest_os_type": "Debian",
       "http_directory": "http",
       "headless": true,
@@ -257,6 +295,7 @@
       "ssh_username": "root",
       "ssh_password": "vagrant",
       "ssh_port": 22,
+      "ssh_handshake_attempts": 1000,
       "ssh_timeout": "3600s",
       "shutdown_command": "echo 'vagrant' | sudo -S shutdown -P now",
       "guest_additions_url": "https://download.virtualbox.org/virtualbox/5.2.44/VBoxGuestAdditions_5.2.44.iso",
@@ -267,9 +306,9 @@
     },
     {
       "type": "virtualbox-iso",
-      "name": "generic-debian10-x32-virtualbox",
-      "vm_name": "generic-debian10-x32-virtualbox",
-      "output_directory": "output/generic-debian10-x32-virtualbox",
+      "name": "generic-debian10-virtualbox-x32",
+      "vm_name": "generic-debian10-virtualbox-x32",
+      "output_directory": "output/generic-debian10-virtualbox-x32",
       "boot_wait": "10s",
       "boot_keygroup_interval": "1s",
       "boot_command": [
@@ -298,17 +337,19 @@
           "64"
         ]
       ],
+      "hard_drive_interface": "sata",
       "guest_os_type": "Debian",
       "http_directory": "http",
       "headless": true,
       "vrdp_bind_address": "127.0.0.1",
       "vrdp_port_min": 11000,
       "vrdp_port_max": 12000,
-      "iso_url": "https://cdimage.debian.org/cdimage/archive/10.10.0/i386/iso-cd/debian-10.10.0-i386-netinst.iso",
-      "iso_checksum": "sha256:cf824084643fb82f74d1fbec804baaf74539dadd279af2098da94254f758e5b7",
+      "iso_url": "https://cdimage.debian.org/cdimage/archive/10.13.0/i386/iso-cd/debian-10.13.0-i386-netinst.iso",
+      "iso_checksum": "sha256:af48af8142c6a162e15d70d1f7c77d205ab86e070270939961d0c3021557179f",
       "ssh_username": "root",
       "ssh_password": "vagrant",
       "ssh_port": 22,
+      "ssh_handshake_attempts": 1000,
       "ssh_timeout": "3600s",
       "shutdown_command": "echo 'vagrant' | sudo -S shutdown -P now",
       "guest_additions_url": "https://download.virtualbox.org/virtualbox/6.1.30/VBoxGuestAdditions_6.1.30.iso",
@@ -319,9 +360,9 @@
     },
     {
       "type": "virtualbox-iso",
-      "name": "generic-debian11-x32-virtualbox",
-      "vm_name": "generic-debian11-x32-virtualbox",
-      "output_directory": "output/generic-debian11-x32-virtualbox",
+      "name": "generic-debian11-virtualbox-x32",
+      "vm_name": "generic-debian11-virtualbox-x32",
+      "output_directory": "output/generic-debian11-virtualbox-x32",
       "boot_wait": "10s",
       "boot_keygroup_interval": "1s",
       "boot_command": [
@@ -352,21 +393,79 @@
           "on"
         ]
       ],
+      "hard_drive_interface": "sata",
       "guest_os_type": "Debian",
       "http_directory": "http",
       "headless": true,
       "vrdp_bind_address": "127.0.0.1",
       "vrdp_port_min": 11000,
       "vrdp_port_max": 12000,
-      "iso_url": "https://cdimage.debian.org/cdimage/release/11.2.0/i386/iso-cd/debian-11.2.0-i386-netinst.iso",
-      "iso_checksum": "sha256:14f7758c2ee5d33b751d0dd7d00c77c6482f9b3be59ea39da9338aa07a062972",
+      "iso_url": "https://cdimage.debian.org/cdimage/archive/11.8.0/i386/iso-cd/debian-11.8.0-i386-netinst.iso",
+      "iso_checksum": "sha256:89dce72e2a9310ad307485171c3fb6ce99d27ff93c74bf3319d94890a42b607e",
       "ssh_username": "root",
       "ssh_password": "vagrant",
       "ssh_port": 22,
+      "ssh_handshake_attempts": 1000,
       "ssh_timeout": "3600s",
       "shutdown_command": "echo 'vagrant' | sudo -S shutdown -P now",
-      "guest_additions_url": "https://download.virtualbox.org/virtualbox/6.1.30/VBoxGuestAdditions_6.1.30.iso",
-      "guest_additions_sha256": "d324d2d09d8dd00b1eb3ef3d80ab2e1726998421d13adc0d2a90e05d355aaa5c",
+      "guest_additions_url": "https://download.virtualbox.org/virtualbox/6.1.50/VBoxGuestAdditions_6.1.50.iso",
+      "guest_additions_sha256": "af53e34c5a5ec143f3418ac01d00ed5f33f6b31bfdc92eb4714c99d9bccb6602",
+      "guest_additions_path": "VBoxGuestAdditions.iso",
+      "guest_additions_mode": "upload",
+      "virtualbox_version_file": "VBoxVersion.txt"
+    },
+    {
+      "type": "virtualbox-iso",
+      "name": "generic-debian12-virtualbox-x32",
+      "vm_name": "generic-debian12-virtualbox-x32",
+      "output_directory": "output/generic-debian12-virtualbox-x32",
+      "boot_wait": "10s",
+      "boot_keygroup_interval": "1s",
+      "boot_command": [
+        "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+        "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+        "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+        "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+        "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+        "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+        "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+        "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+        "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+        "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+        "/install.386/vmlinuz auto=true priority=critical vga=788 initrd=/install.386/gtk/initrd.gz --- quiet ",
+        "ipv6.disable_ipv6=1 net.ifnames=0 biosdevname=0 preseed/url=http://{{.HTTPIP}}:{{.HTTPPort}}/generic.debian12.vagrant.cfg ",
+        "<enter>"
+      ],
+      "disk_size": 131072,
+      "cpus": 2,
+      "memory": 2048,
+      "vboxmanage": [
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--vram",
+          "64",
+          "--ioapic",
+          "on"
+        ]
+      ],
+      "hard_drive_interface": "sata",
+      "guest_os_type": "Debian",
+      "http_directory": "http",
+      "headless": true,
+      "vrdp_bind_address": "127.0.0.1",
+      "vrdp_port_min": 11000,
+      "vrdp_port_max": 12000,
+      "iso_url": "https://cdimage.debian.org/cdimage/release/12.4.0/i386/iso-cd/debian-12.4.0-i386-netinst.iso",
+      "iso_checksum": "sha256:3b39026f0dc0c1c37e3ebe9373aba1fc0d270a9c189416726d705d7f7b273a7a",
+      "ssh_username": "root",
+      "ssh_password": "vagrant",
+      "ssh_port": 22,
+      "ssh_handshake_attempts": 1000,
+      "ssh_timeout": "3600s",
+      "shutdown_command": "echo 'vagrant' | sudo -S shutdown -P now",
+      "guest_additions_url": "https://download.virtualbox.org/virtualbox/7.0.14/VBoxGuestAdditions_7.0.14.iso",
+      "guest_additions_sha256": "0efbcb9bf4722cb19292ae00eba29587432e918d3b1f70905deb70f7cf78e8ce",
       "guest_additions_path": "VBoxGuestAdditions.iso",
       "guest_additions_mode": "upload",
       "virtualbox_version_file": "VBoxVersion.txt"

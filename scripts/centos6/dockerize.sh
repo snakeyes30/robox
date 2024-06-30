@@ -10,15 +10,7 @@ service dbus stop
 service mysqld stop
 service postfix stop
 
-#LANG="en_US"
-#echo "%_install_lang $LANG" > /etc/rpm/macros.image-language-conf
-
-awk '(NF==0&&!done){print "override_install_langs='$LANG'\ntsflags=nodocs";done=1}{print}' \
-    < /etc/yum.conf > /etc/yum.conf.new
-mv /etc/yum.conf.new /etc/yum.conf
 echo 'container' > /etc/yum/vars/infra
-
-rm -f /usr/lib/locale/locale-archive
 
 # Setup the login message instructions.
 if [[ ! "$PACKER_BUILD_NAME" =~ ^generic-.*$ ]]; then
@@ -29,7 +21,7 @@ fi
 printf "if [ \"\$PS1\" ]; then\n  cd \$HOME\nfi\n" > /etc/profile.d/home.sh
 
 # Setup the locale, and arrogantly assume everyone lives in the US.
-localedef -v -c -i en_US -f UTF-8 en_US.UTF-8
+localedef -c -i en_US -f UTF-8 en_US.UTF-8
 
 rm -rf /var/cache/yum/*
 rm -f /tmp/ks-script*
@@ -40,7 +32,7 @@ rm -rf /tmp/*
 date --utc > /etc/docker_box_build_time
 
 # Randomize the root password and then lock the root account.
-dd if=/dev/urandom count=50 | md5sum | passwd --stdin root
+dd if=/dev/urandom count=50 | md5sum | awk -F' ' '{print $1}' | passwd --stdin root
 passwd --lock root
 
 if [ -f /etc/machine-id ]; then
@@ -55,15 +47,15 @@ printf "/tmp/excludes\n" > /tmp/excludes
 printf "/tmp/$PACKER_BUILD_NAME.tar\n" >> /tmp/excludes
 
 # Exclude all of the special files from the tarball.
-find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type b -print >> /tmp/excludes
-find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type c -print >> /tmp/excludes
-find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type p -print >> /tmp/excludes
-find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type s -print >> /tmp/excludes
-find /var/log/ -type f -print >> /tmp/excludes
-find /lib/modules/ -mindepth 1 -print >> /tmp/excludes
-find /usr/src/kernels/ -mindepth 1 -print >> /tmp/excludes
-find /var/lib/yum/yumdb/ -mindepth 1 -print >> /tmp/excludes
-find /etc/sysconfig/network-scripts/ -name "ifcfg-*" -print >> /tmp/excludes
+find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type b -print 1>>/tmp/excludes 2>/dev/null
+find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type c -print 1>>/tmp/excludes 2>/dev/null
+find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type p -print 1>>/tmp/excludes 2>/dev/null
+find -L $(ls -1 -d /* | grep -Ev "sys|dev|proc") -type s -print 1>>/tmp/excludes 2>/dev/null
+find /var/log/ -type f -print 1>>/tmp/excludes 2>/dev/null
+find /lib/modules/ -mindepth 1 -print 1>>/tmp/excludes 2>/dev/null
+find /usr/src/kernels/ -mindepth 1 -print 1>>/tmp/excludes 2>/dev/null
+find /var/lib/yum/yumdb/ -mindepth 1 -print 1>>/tmp/excludes 2>/dev/null
+find /etc/sysconfig/network-scripts/ -name "ifcfg-*" -print 1>>/tmp/excludes 2>/dev/null
 find /tmp -type f -or -type d -print | grep --invert-match --extended-regexp "^/tmp/$|^/tmp$" >> /tmp/excludes
 
 # Remove the files associated with these packages since containers don't need them.
@@ -79,7 +71,8 @@ sed --in-place "s/^\///g" /tmp/excludes
 # Tarball the filesystem.
 tar --create --numeric-owner --preserve-permissions --one-file-system \
   --directory=/ --file=/tmp/$PACKER_BUILD_NAME.tar --exclude=/etc/firewalld \
-  --exclude=/boot --exclude=/proc --exclude=/lost+found --exclude=/mnt --exclude=/sys -X /tmp/excludes /
+  --exclude=/boot --exclude=/proc --exclude=/lost+found --exclude=/mnt --exclude=/sys \
+  --exclude=/var/run/udev --exclude=/run/udev -X /tmp/excludes /
 
 if [ $? != 0 ] || [ ! -f /tmp/$PACKER_BUILD_NAME.tar ]; then
   printf "\n\nTarball generation failed.\n\n"

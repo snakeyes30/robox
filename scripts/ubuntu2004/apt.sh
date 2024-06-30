@@ -1,16 +1,17 @@
-#!/bin/bash -ex
+#!/bin/bash
 
 # If the TERM environment variable is set to dumb, tput will generate spurrious error messages.
 [ "$TERM" == "dumb" ] && export TERM="vt100"
 
 retry() {
   local COUNT=1
+  local DELAY=0
   local RESULT=0
   while [[ "${COUNT}" -le 10 ]]; do
     [[ "${RESULT}" -ne 0 ]] && {
-      [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput setaf 1
+      [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput setaf 1
       echo -e "\n${*} failed... retrying ${COUNT} of 10.\n" >&2
-      [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput sgr0
+      [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput sgr0
     }
     "${@}" && { RESULT=0 && break; } || RESULT="${?}"
     COUNT="$((COUNT + 1))"
@@ -21,9 +22,9 @@ retry() {
   done
 
   [[ "${COUNT}" -gt 10 ]] && {
-    [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput setaf 1
+    [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput setaf 1
     echo -e "\nThe command failed 10 times.\n" >&2
-    [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput sgr0
+    [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput sgr0
   }
 
   return "${RESULT}"
@@ -59,9 +60,53 @@ printf "APT::Periodic::Enable \"0\";\n" >> /etc/apt/apt.conf.d/10periodic
 printf "APT::Acquire::Retries \"0\";\n" >> /etc/apt/apt.conf.d/20retries
 
 fi
-# Keep the daily apt updater from deadlocking our installs.
-systemctl stop apt-daily.service apt-daily.timer
-systemctl stop snapd.service snapd.socket
+
+# Stop the active services/timers.
+systemctl --quiet list-unit-files apt-daily.timer &>/dev/null && systemctl --quiet is-active apt-daily.timer && systemctl stop apt-daily.timer
+systemctl --quiet list-unit-files apt-daily-upgrade.timer &>/dev/null && systemctl --quiet is-active apt-daily-upgrade.timer && systemctl stop apt-daily-upgrade.timer
+systemctl --quiet list-unit-files update-notifier-download.timer &>/dev/null && systemctl --quiet is-active update-notifier-download.timer && systemctl stop update-notifier-download.timer
+
+systemctl --quiet list-unit-files apt-news.service &>/dev/null && systemctl --quiet is-active apt-news.service && systemctl stop apt-news.service
+systemctl --quiet list-unit-files apt-daily.service &>/dev/null && systemctl --quiet is-active apt-daily.service && systemctl stop apt-daily.service
+systemctl --quiet list-unit-files apt-daily-upgrade.service &>/dev/null && systemctl --quiet is-active apt-daily-upgrade.service && systemctl stop apt-daily-upgrade.service
+
+systemctl --quiet list-unit-files snapd.socket &>/dev/null && systemctl --quiet is-active snapd.socket && systemctl stop snapd.socket
+systemctl --quiet list-unit-files snapd.service &>/dev/null && systemctl --quiet is-active snapd.service && systemctl stop snapd.service
+
+systemctl --quiet list-unit-files packagekit.service &>/dev/null && systemctl --quiet is-active packagekit.service && systemctl stop packagekit.service
+systemctl --quiet list-unit-files packagekit-offline-update.service &>/dev/null && systemctl --quiet is-active packagekit-offline-update.service && systemctl stop packagekit.service
+
+systemctl --quiet list-unit-files unattended-upgrades.service &>/dev/null && systemctl --quiet is-active unattended-upgrades.service && systemctl stop unattended-upgrades.service
+systemctl --quiet list-unit-files update-notifier-download.service &>/dev/null && systemctl --quiet is-active update-notifier-download.service && systemctl stop update-notifier-download.service
+
+# Disable them so they don't restart.
+systemctl --quiet list-unit-files apt-daily.timer &>/dev/null && systemctl --quiet is-enabled apt-daily.timer && systemctl disable apt-daily.timer
+systemctl --quiet list-unit-files apt-daily-upgrade.timer &>/dev/null && systemctl --quiet is-enabled apt-daily-upgrade.timer && systemctl disable apt-daily-upgrade.timer
+systemctl --quiet list-unit-files update-notifier-download.timer &>/dev/null && systemctl --quiet is-enabled update-notifier-download.timer && systemctl disable update-notifier-download.timer
+
+systemctl --quiet list-unit-files apt-news.service &>/dev/null && systemctl --quiet is-enabled apt-news.service && systemctl mask apt-news.service
+systemctl --quiet list-unit-files apt-daily.service &>/dev/null && systemctl --quiet is-enabled apt-daily.service && systemctl mask apt-daily.service
+systemctl --quiet list-unit-files apt-daily-upgrade.service &>/dev/null && systemctl --quiet is-enabled apt-daily-upgrade.service && systemctl mask apt-daily-upgrade.service
+
+# Package install/update triggers rely on the PackageKit.service to make system changes, and these operations fail
+# if the PackageKit.service is masked. So we only disable it.
+systemctl --quiet list-unit-files packagekit.service &>/dev/null && systemctl --quiet is-enabled packagekit.service && systemctl disable packagekit.service
+systemctl --quiet list-unit-files packagekit-offline-update.service &>/dev/null && systemctl --quiet is-enabled packagekit-offline-update.service && systemctl mask packagekit-offline-update.service
+
+systemctl --quiet list-unit-files snapd.socket &>/dev/null && systemctl --quiet is-enabled snapd.socket && systemctl disable snapd.socket
+systemctl --quiet list-unit-files snapd.service &>/dev/null && systemctl --quiet is-enabled snapd.service && systemctl mask snapd.service
+
+systemctl --quiet list-unit-files unattended-upgrades.service &>/dev/null && systemctl --quiet is-enabled unattended-upgrades.service && systemctl mask unattended-upgrades.service
+systemctl --quiet list-unit-files update-notifier-download.service &>/dev/null && systemctl --quiet is-enabled update-notifier-download.service && systemctl mask update-notifier-download.service
+
+# An unattended upgrade service doesn't fit the use use case for 
+# vagrant boxes, so removal is an option, but since Ubuntu installs 
+# it by default, and we want to keep the environment close to the default,
+# we'll just leave disabled for now.
+# apt-get -qq -y purge unattended-upgrades 
+# cat <<-EOF | sudo debconf-set-selections
+# unattended-upgrades unattended-upgrades/enable_auto_updates boolean false
+# EOF
 
 # Update the package database.
 retry apt-get --assume-yes -o Dpkg::Options::="--force-confnew" update; error

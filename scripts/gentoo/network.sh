@@ -7,13 +7,13 @@ printf "nameserver 4.2.2.1\nnameserver 4.2.2.2\nnameserver 208.67.220.220\n"> /e
 sysctl net.ipv6.conf.all.disable_ipv6=1
 
 # Ensure IPv6 stays disabled.
-printf "\nnet.ipv6.conf.all.disable_ipv6 = 1\n" >> /etc/sysctl.d/local.conf
+[ -f /etc/sysctl.d/local.conf ] && printf "\nnet.ipv6.conf.all.disable_ipv6 = 1\n" >> /etc/sysctl.d/local.conf
 
 # Set the hostname, and then ensure it will resolve properly.
-if [[ "$PACKER_BUILD_NAME" =~ ^generic-gentoo-(vmware|hyperv|libvirt|parallels|virtualbox)$ ]]; then
+if [[ "$PACKER_BUILD_NAME" =~ ^generic-gentoo-(vmware|hyperv|libvirt|parallels|virtualbox)-(x64|x32|a64|a32|p64|p32|m64|m32)$ ]]; then
   printf "gentoo.localdomain\n" > /etc/hostname
   printf "\n127.0.0.1 gentoo.localdomain\n\n" >> /etc/hosts
 else
-  printf "magma.builder\n" > /etc/hostname
-  printf "\n127.0.0.1 magma.builder\n\n" >> /etc/hosts
+  printf "magma.localdomain\n" > /etc/hostname
+  printf "\n127.0.0.1 magma.localdomain\n\n" >> /etc/hosts
 fi

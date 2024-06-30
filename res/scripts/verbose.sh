@@ -89,8 +89,6 @@ if [ "$ORG" == "magma" ]; then
 
   # Specialized magma box name mappings.
   [ "$BOX" == "magma-alpine36" ] && BOX="magma-alpine"
-  [ "$BOX" == "magma-debian8" ] && BOX="magma-debian"
-  [ "$BOX" == "magma-fedora27" ] && BOX="magma-fedora"
   [ "$BOX" == "magma-freebsd11" ] && BOX="magma-freebsd"
   [ "$BOX" == "magma-openbsd6" ] && BOX="magma-openbsd"
 
@@ -167,7 +165,7 @@ retry() {
   while [[ "${COUNT}" -le 10 ]]; do
     [[ "${RESULT}" -ne 0 ]] && {
       echo ""
-      echo -e "$(tput setaf 1)${*} failed... retrying ${COUNT} of 10.$(tput sgr0)" | tr -d \\n >&2
+      printf "  %s ${T_BYEL}failed.${T_RESET}... retrying ${COUNT} of 10.\n" "${*}" >&2
       echo ""
     }
     "${@}" && { RESULT=0 && break; } || RESULT="${?}"

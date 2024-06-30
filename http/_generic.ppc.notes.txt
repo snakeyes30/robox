@@ -1,0 +1,213 @@
+# From Devuan grub config file.
+function load_video {
+  if [ x$feature_all_video_module = xy ]; then
+    insmod all_video
+  else
+    insmod efi_gop
+    insmod efi_uga
+    insmod ieee1275_fb
+    insmod vbe
+    insmod vga
+    insmod video_bochs
+    insmod video_cirrus
+  fi
+}
+
+
+
+
+# Enabled an emulated TPM 
+"vtpm": true,
+"tpm_device_type": "tpm-tis", # x86
+"tpm_device_type": "tpm-tis-device", # arm
+"tpm_device_type": "tpm-spapr", # powerpc
+
+
+
+
+
+
+
+use_pflash (bool) -false (the default), the firmware is provided using -bios, true, via a pflash drive 
+
+ "efi_boot": false,
+ "use_pflash": false,
+ "firmware": "/usr/share/uboot/aarch64/qemu_arm64/u-boot.bin",
+
+[
+"-dtb",
+"/usr/share/uboot/aarch64/qemu_arm64/dt.dtb"
+]
+
+
+
+
+
+# Debian doc take on running QEMU with command line params.
+
+
+## aarch64
+# qemu-system-aarch64 -M virt -cpu max -bios /usr/share/qemu-efi-aarch64/QEMU_EFI.fd -cdrom debian-foo-arm64-netinst.iso -hda hd_image.img -m 1G -serial stdio
+
+
+## armhf
+# qemu-system-arm -M virt -cpu max -kernel /mnt/cdrom/install.ahf/vmlinuz -initrd /mnt/cdrom/install.ahf/initrd.gz -drive file=debian-foo-armhf-netinst.iso,if=none,id=cd,media=cdrom,read-only -device virtio-blk-device,drive=cd -drive file=hd_image.img,if=none,id=hd -device virtio-blk-device,drive=hd -device virtio-net-device,netdev=net0 -netdev user,id=net0 -m 1G -serial stdio
+
+
+## mips64el
+# qemu-system-mips64el -M malta -cpu 5KEc -kernel /mnt/cdrom/install/malta/netboot/vmlinuz-5.10.0-6-5kc-malta -initrd /mnt/cdrom/install/malta/netboot/initrd.gz -hda hd_image.img -m 1G -serial stdio
+
+Build uboot for 64 bit, little endian, theng enerate NOR flash image with U-Boot binary:
+
+  make malta64el_defconfig
+  make
+  UBOOT_BIN=u-boot-swap.bin
+
+  dd if=/dev/zero bs=1M count=4 | tr '\000' '\377' > pflash.img
+  dd if=u-boot-swap.bin of=pflash.img conv=notrunc
+  
+  qemu-system-mips64el -nographic -cpu MIPS64R2-generic -m 256 -drive if=pflash,file="$(pwd)/pflash.img",format=raw -netdev user,id=net0,tftp="$(pwd)/tftproot" -device pcnet,netdev=net0
+
+
+## riscv64
+# qemu-system-riscv64 -machine virt -bios /usr/lib/riscv64-linux-gnu/opensbi/generic/fw_jump.elf -kernel vmlinux -initrd initrd.gz -device virtio-net-device,netdev=usernet -netdev user,id=usernet -device virtio-blk-device,drive=hd0 -drive file=hd_image.img,id=hd0 -serial stdio -append 'console=ttyS0' -m 1.9G
+
+
+
+set background_color=black
+
+
+linux /install.a64/vmlinuz auto=true priority=critical --- preseed/url=http://192.168.121.1:8604/generic.debian12.vagrant.arm.cfg ipv6.disable_ipv6=1 net.ifnames=0 biosdevname=0
+initrd /install.a64/initrd.gz
+boot
+
+
+
+
+
+
+
+
+#### Update the HTTP port to match the Packer webserver then use the serial0 console to access the GRUB command line, and paste these snippets.
+
+
+### Debian 12 for ppc64le
+# Note that setting console=tty1 may cause problems... the /dev/hvc0 device points to the virtual serial port.
+# Also note that TERM=dumb might fix the output formatting on the serial console. 
+
+linux /install/vmlinux auto=true priority=high --- preseed/url=http://192.168.124.1:8135/generic.debian12.vagrant.p64.cfg ipv6.disable_ipv6=1 net.ifnames=0 biosdevname=0 hostname=debian12 domain=localdomain
+initrd /install/initrd.gz
+boot
+
+### Alma 9 for ppc64le
+# "ppce500,usb=off,dump-guest-core=off,cap-ccf-assist=false,cap-ibs=broken,cap-sbbc=broken,cap-cfpc=broken,usb=on,nvdimm=on,hmat=on,graphics=on"
+# insmod all_video
+
+linux /ppc/ppc64/vmlinuz inst.stage2=hd:LABEL=AlmaLinux-9-3-ppc64le-dvd ro inst.ks=http://192.168.124.1:8486/generic.alma9.vagrant.p64.ks inst.nompath inst.nodmraid inst.text net.ifnames=0 biosdevname=0 selinux=0 console=hvc0 console=ttyS0 console=tty1
+initrd /ppc/ppc64/initrd.img
+boot
+
+
+
+
+linux /ppc/ppc64/vmlinuz inst.stage2=hd:LABEL=AlmaLinux-9-3-ppc64le-dvd ro inst.ks=http://192.168.124.1:8486/generic.alma9.vagrant.p64.ks inst.text systemd.mask=tmp.mount console=hvc0 console=ttyS0 console=tty1
+initrd /ppc/ppc64/initrd.img
+boot
+
+
+
+
+
+      "iso_url": "https://cdimage.debian.org/cdimage/release/12.4.0/arm64/iso-dvd/debian-12.4.0-arm64-DVD-1.iso",
+      "iso_checksum": "sha256:f0cf80ba2588e4ebd32d076ce8a41ed72d0fc9a5c441be3bc3f24a8d30cdbf8b",
+
+
+      "iso_url": "https://cdimage.debian.org/cdimage/release/12.4.0/arm64/iso-cd/debian-12.4.0-arm64-netinst.iso",
+      "iso_checksum": "sha256:d32d2c63350a932dc0d9d45665985b41413f9e01efc0eacbea981d435f553d3d",
+
+
+[
+  "-device",
+  "VGA,acpi-index=1,edid=on,xres=1024,yres=768,vgamem_mb=64,global-vmstate=on,bus=pci.0"
+]
+"boot_command": [
+  " "
+],
+
+
+
+[
+  "-vga",
+  "std"
+],
+"boot_command": [
+  "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+  "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+  "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+  "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+  "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+  "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>",
+  "<esc><wait><esc><wait><esc><wait><esc><wait><esc><wait><esc><wait>c<wait><enter><wait>",
+  "setparams \"Automated install\"<enter><wait3>",
+  "set background_color=black<enter><wait3>",
+  "set gfxpayload=keep<enter><wait3>",
+  "linux /install/vmlinux --- auto=true priority=critical preseed/url=http://192.168.121.1:8573/generic.debian12.vagrant.ppc.cfg ipv6.disable_ipv6=1 net.ifnames=0 biosdevname=0 vga=792<enter><wait3>",
+  "initrd /install/initrd.gz<enter><wait3>",
+  "boot<enter><wait>"
+],
+
+
+[
+  [
+    "-device",
+    "pci-ohci"
+  ],
+  [
+    "-device",
+    "usb-kbd"
+  ],
+  [
+    "-device",
+    "{'driver':'VGA','id':'video0','vgamem_mb':16,'bus':'pcie.0','addr':'0x1'}"
+  ],
+  [
+    "-device",
+    "VGA,acpi-index=1,edid=off,xres=1280,yres=720,vgamem_mb=64,refresh_rate=60,global-vmstate=on"
+  ],
+  [
+    "-chardev",
+    "socket,id=charmonitor,server=on,wait=off"
+  ],
+  [
+    "-mon",
+    "chardev=charmonitor,id=monitor,mode=control"
+  ],
+  [
+    "-device",
+    "{'driver':'qemu-xhci','p2':15,'p3':15,'id':'usb','bus':'pci.0'}"
+  ],
+  [
+    "-device",
+    "{'driver':'virtio-scsi-pci','id':'scsi0','bus':'pci.0'}"
+  ],
+  [
+    "-device",
+    "{'driver':'virtio-serial-pci','id':'virtio-serial0','bus':'pci.0'}"
+  ],
+  [
+    "-chardev",
+    "pty,id=charserial1"
+  ],
+  [
+    "-device",
+    "{'driver':'spapr-vty','chardev':'charserial1','id':'serial1'}"
+  ],
+  [
+    "-chardev",
+    "socket,id=charchannel1,server=on,wait=off"
+  ],
+  [
+    "-device",
+    "{'driver':'virtserialport','bus':'virtio-serial0.0','nr':1,'chardev':'charchannel1','id':'channel1','name':'org.qemu.guest_agent.0'}"
+  ]
+]

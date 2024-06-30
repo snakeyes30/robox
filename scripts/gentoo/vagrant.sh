@@ -8,7 +8,7 @@ set -eux
 
 # Gentoo builds don't include polkit but they may in the future.
 if [ -d /etc/polkit-1/rules.d/ ]; then
-cat <<EOF > /etc/polkit-1/rules.d/49-vagrant.rules
+cat <<-EOF > /etc/polkit-1/rules.d/49-vagrant.rules
 polkit.addRule(function(action, subject) {
     if (subject.isInGroup("vagrant")) {
         return polkit.Result.YES;
@@ -27,6 +27,12 @@ if [ -f /etc/security/passwdqc.conf ]; then
 fi
 
 printf "vagrant\nvagrant\n" | passwd vagrant
+
+if [ ! -d /etc/sudoers.d/ ]; then
+  mkdir /etc/sudoers.d/ || exit 1
+  chmod 750 /etc/sudoers.d/ || exit 1
+fi
+
 cat <<-EOF > /etc/sudoers.d/vagrant
 Defaults:vagrant !fqdn
 Defaults:vagrant !requiretty

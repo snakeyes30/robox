@@ -1,0 +1,34 @@
+{
+  "builders": [
+    {
+      "name": "debian12-p64",
+      "output_directory": "output/debian12-p64",
+      "iso_url": "https://cdimage.debian.org/cdimage/release/12.4.0/ppc64el/iso-cd/debian-12.4.0-ppc64el-netinst.iso",
+      "iso_checksum": "sha256:2d36b6b378ab9634819e1e4f3399c52d7a65ba6bf4f44e4818b9c2b701eefa0a",
+      "boot_wait": "5s",
+      "disk_size": 1,
+      "headless": true,
+      "shutdown_command": "poweroff",
+      "ssh_password": "vagrant",
+      "ssh_port": 22,
+      "ssh_timeout": "10s",
+      "ssh_username": "root",
+      "type": "vmware-iso"
+    },
+    {
+      "name": "alma9-p64",
+      "output_directory": "output/alma9-p64",
+      "iso_url": "https://dfw.mirror.rackspace.com/almalinux/9.3/isos/ppc64le/AlmaLinux-9.3-ppc64le-boot.iso",
+      "iso_checksum": "sha256:ea67c57bff65dda91110611b72339052b4815128e2ba4897c2a784a6794bd985",
+      "boot_wait": "5s",
+      "disk_size": 1,
+      "headless": true,
+      "shutdown_command": "poweroff",
+      "ssh_password": "vagrant",
+      "ssh_port": 22,
+      "ssh_timeout": "10s",
+      "ssh_username": "root",
+      "type": "vmware-iso"
+    }
+  ]
+}

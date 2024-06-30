@@ -15,7 +15,7 @@ sysctl net.ipv6.conf.all.disable_ipv6=1
 printf "\n\nnet.ipv6.conf.all.disable_ipv6 = 1\n" >> /etc/sysctl.conf
 
 # Set the hostname, and then ensure it will resolve properly.
-if [[ "$PACKER_BUILD_NAME" =~ ^generic-(rhel|rhel6)-(vmware|hyperv|docker|libvirt|parallels|virtualbox)$ ]]; then
+if [[ "$PACKER_BUILD_NAME" =~ ^generic-(rhel|rhel6)-(vmware|hyperv|docker|libvirt|parallels|virtualbox)-(x64|x32|a64|a32|p64|p32|m64|m32)$ ]]; then
   sed -i -e "/HOSTNAME/d" /etc/sysconfig/network
   printf "HOSTNAME=rhel6.localdomain\n" >> /etc/sysconfig/network
 
@@ -28,14 +28,14 @@ if [[ "$PACKER_BUILD_NAME" =~ ^generic-(rhel|rhel6)-(vmware|hyperv|docker|libvir
 
 else
   sed -i -e "/HOSTNAME/d" /etc/sysconfig/network
-  printf "HOSTNAME=magma.builder\n" >> /etc/sysconfig/network
+  printf "HOSTNAME=magma.localdomain\n" >> /etc/sysconfig/network
 
   if [ -f /etc/sysconfig/network-scripts/ifcfg-eth0 ]; then
     sed -i -e "/DHCP_HOSTNAME/d" /etc/sysconfig/network-scripts/ifcfg-eth0
-    printf "DHCP_HOSTNAME=\"magma.builder\"\n" >> /etc/sysconfig/network-scripts/ifcfg-eth0
+    printf "DHCP_HOSTNAME=\"magma.localdomain\"\n" >> /etc/sysconfig/network-scripts/ifcfg-eth0
   fi
 
-  printf "\n127.0.0.1 magma.builder\n\n" >> /etc/hosts
+  printf "\n127.0.0.1 magma.localdomain\n\n" >> /etc/hosts
 
 fi
 

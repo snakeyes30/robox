@@ -2,12 +2,13 @@
 
 retry() {
   local COUNT=1
+  local DELAY=0
   local RESULT=0
   while [[ "${COUNT}" -le 10 ]]; do
     [[ "${RESULT}" -ne 0 ]] && {
-      [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput setaf 1
+      [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput setaf 1
       echo -e "\n${*} failed... retrying ${COUNT} of 10.\n" >&2
-      [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput sgr0
+      [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput sgr0
     }
     "${@}" && { RESULT=0 && break; } || RESULT="${?}"
     COUNT="$((COUNT + 1))"
@@ -18,9 +19,9 @@ retry() {
   done
 
   [[ "${COUNT}" -gt 10 ]] && {
-    [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput setaf 1
+    [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput setaf 1
     echo -e "\nThe command failed 10 times.\n" >&2
-    [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput sgr0
+    [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput sgr0
   }
 
   return "${RESULT}"
@@ -34,7 +35,7 @@ error() {
 }
 
 # Tell dnf to retry 128 times before failing, so unattended installs don't skip packages when errors occur.
-printf "\nretries=128\ndeltarpm=false\nmetadata_expire=20\ntimeout=300\n" >> /etc/dnf/dnf.conf
+printf "\nretries=128\ndeltarpm=false\nmetadata_expire=300\ntimeout=300\n" >> /etc/dnf/dnf.conf
 
 # Disable the subscription manager plugin.
 if [ -f /etc/yum/pluginconf.d/subscription-manager.conf ]; then
@@ -82,10 +83,12 @@ systemctl restart NetworkManager
 retry dnf install --assumeyes sudo dmidecode; error
 systemctl restart NetworkManager
 
-# Run update a second time, just in case it failed the first time. Mirror timeoutes and cosmic rays
-# often interupt the the provisioning process.
+# Run update a second time, just in case it failed the first time. Mirror timeouts and cosmic rays
+# often interrupt the the provisioning process.
 retry dnf upgrade --assumeyes; error
 systemctl restart NetworkManager
 
 # Reboot onto the new kernel (if applicable).
-shutdown --reboot --no-wall +1
+( shutdown --reboot --no-wall +1 ) &
+exit 0
+

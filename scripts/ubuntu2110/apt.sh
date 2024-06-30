@@ -1,16 +1,17 @@
-#!/bin/bash -ex
+#!/bin/bash
 
 # If the TERM environment variable is set to dumb, tput will generate spurrious error messages.
 [ "$TERM" == "dumb" ] && export TERM="vt100"
 
 retry() {
   local COUNT=1
+  local DELAY=0
   local RESULT=0
   while [[ "${COUNT}" -le 10 ]]; do
     [[ "${RESULT}" -ne 0 ]] && {
-      [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput setaf 1
+      [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput setaf 1
       echo -e "\n${*} failed... retrying ${COUNT} of 10.\n" >&2
-      [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput sgr0
+      [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput sgr0
     }
     "${@}" && { RESULT=0 && break; } || RESULT="${?}"
     COUNT="$((COUNT + 1))"
@@ -21,9 +22,9 @@ retry() {
   done
 
   [[ "${COUNT}" -gt 10 ]] && {
-    [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput setaf 1
+    [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput setaf 1
     echo -e "\nThe command failed 10 times.\n" >&2
-    [ "`which tput 2> /dev/null`" != "" ] && [ ! -z "$TERM" ] && tput sgr0
+    [ "`which tput 2> /dev/null`" != "" ] && [ -n "$TERM" ] && tput sgr0
   }
 
   return "${RESULT}"
@@ -93,27 +94,52 @@ EOF
 
 fi
 
-# Keep the daily apt updater from deadlocking our the upgrade/install commands we are about to run.
-# systemctl --quiet is-active snapd.service && systemctl stop snapd.service snapd.socket
+# Stop the active services/timers.
+systemctl --quiet list-unit-files apt-daily.timer &>/dev/null && systemctl --quiet is-active apt-daily.timer && systemctl stop apt-daily.timer
+systemctl --quiet list-unit-files apt-daily-upgrade.timer &>/dev/null && systemctl --quiet is-active apt-daily-upgrade.timer && systemctl stop apt-daily-upgrade.timer
+systemctl --quiet list-unit-files update-notifier-download.timer &>/dev/null && systemctl --quiet is-active update-notifier-download.timer && systemctl stop update-notifier-download.timer
 
-# Stop the active servicees/timers.
-systemctl --quiet is-active apt-daily.timer && systemctl stop apt-daily.timer
-systemctl --quiet is-active apt-daily-upgrade.timer && systemctl stop apt-daily-upgrade.timer
-systemctl --quiet is-active update-notifier-download.timer && systemctl stop update-notifier-download.timer
-systemctl --quiet is-active apt-daily.service && systemctl stop apt-daily.service
-systemctl --quiet is-active packagekit.service && systemctl stop packagekit.service
-systemctl --quiet is-active apt-daily-upgrade.service && systemctl stop apt-daily-upgrade.service
-systemctl --quiet is-active unattended-upgrades.service && systemctl stop unattended-upgrades.service
-systemctl --quiet is-active update-notifier-download.service && systemctl stop update-notifier-download.service
+systemctl --quiet list-unit-files apt-news.service &>/dev/null && systemctl --quiet is-active apt-news.service && systemctl stop apt-news.service
+systemctl --quiet list-unit-files apt-daily.service &>/dev/null && systemctl --quiet is-active apt-daily.service && systemctl stop apt-daily.service
+systemctl --quiet list-unit-files apt-daily-upgrade.service &>/dev/null && systemctl --quiet is-active apt-daily-upgrade.service && systemctl stop apt-daily-upgrade.service
+
+systemctl --quiet list-unit-files snapd.socket &>/dev/null && systemctl --quiet is-active snapd.socket && systemctl stop snapd.socket
+systemctl --quiet list-unit-files snapd.service &>/dev/null && systemctl --quiet is-active snapd.service && systemctl stop snapd.service
+
+systemctl --quiet list-unit-files packagekit.service &>/dev/null && systemctl --quiet is-active packagekit.service && systemctl stop packagekit.service
+systemctl --quiet list-unit-files packagekit-offline-update.service &>/dev/null && systemctl --quiet is-active packagekit-offline-update.service && systemctl stop packagekit.service
+
+systemctl --quiet list-unit-files unattended-upgrades.service &>/dev/null && systemctl --quiet is-active unattended-upgrades.service && systemctl stop unattended-upgrades.service
+systemctl --quiet list-unit-files update-notifier-download.service &>/dev/null && systemctl --quiet is-active update-notifier-download.service && systemctl stop update-notifier-download.service
 
 # Disable them so they don't restart.
-systemctl --quiet is-enabled apt-daily.timer && systemctl disable apt-daily.timer
-systemctl --quiet is-enabled apt-daily-upgrade.timer && systemctl disable apt-daily-upgrade.timer
-systemctl --quiet is-enabled update-notifier-download.timer && systemctl disable update-notifier-download.timer
-systemctl --quiet is-enabled unattended-upgrades.service && systemctl disable unattended-upgrades.service
-systemctl --quiet is-enabled apt-daily.service && systemctl mask apt-daily.service
-systemctl --quiet is-enabled apt-daily-upgrade.service && systemctl mask apt-daily-upgrade.service
-systemctl --quiet is-enabled update-notifier-download.service && systemctl mask update-notifier-download.service
+systemctl --quiet list-unit-files apt-daily.timer &>/dev/null && systemctl --quiet is-enabled apt-daily.timer && systemctl disable apt-daily.timer
+systemctl --quiet list-unit-files apt-daily-upgrade.timer &>/dev/null && systemctl --quiet is-enabled apt-daily-upgrade.timer && systemctl disable apt-daily-upgrade.timer
+systemctl --quiet list-unit-files update-notifier-download.timer &>/dev/null && systemctl --quiet is-enabled update-notifier-download.timer && systemctl disable update-notifier-download.timer
+
+systemctl --quiet list-unit-files apt-news.service &>/dev/null && systemctl --quiet is-enabled apt-news.service && systemctl mask apt-news.service
+systemctl --quiet list-unit-files apt-daily.service &>/dev/null && systemctl --quiet is-enabled apt-daily.service && systemctl mask apt-daily.service
+systemctl --quiet list-unit-files apt-daily-upgrade.service &>/dev/null && systemctl --quiet is-enabled apt-daily-upgrade.service && systemctl mask apt-daily-upgrade.service
+
+# Package install/update triggers rely on the PackageKit.service to make system changes, and these operations fail
+# if the PackageKit.service is masked. So we only disable it.
+systemctl --quiet list-unit-files packagekit.service &>/dev/null && systemctl --quiet is-enabled packagekit.service && systemctl disable packagekit.service
+systemctl --quiet list-unit-files packagekit-offline-update.service &>/dev/null && systemctl --quiet is-enabled packagekit-offline-update.service && systemctl mask packagekit-offline-update.service
+
+systemctl --quiet list-unit-files snapd.socket &>/dev/null && systemctl --quiet is-enabled snapd.socket && systemctl disable snapd.socket
+systemctl --quiet list-unit-files snapd.service &>/dev/null && systemctl --quiet is-enabled snapd.service && systemctl mask snapd.service
+
+systemctl --quiet list-unit-files unattended-upgrades.service &>/dev/null && systemctl --quiet is-enabled unattended-upgrades.service && systemctl mask unattended-upgrades.service
+systemctl --quiet list-unit-files update-notifier-download.service &>/dev/null && systemctl --quiet is-enabled update-notifier-download.service && systemctl mask update-notifier-download.service
+
+# An unattended upgrade service doesn't fit the use use case for 
+# vagrant boxes, so removal is an option, but since Ubuntu installs 
+# it by default, and we want to keep the environment close to the default,
+# we'll just leave disabled for now.
+# apt-get -qq -y purge unattended-upgrades 
+# cat <<-EOF | sudo debconf-set-selections
+# unattended-upgrades unattended-upgrades/enable_auto_updates boolean false
+# EOF
 
 # Truncate the sources list in order to force a status purge.
 # truncate --size=0 /etc/apt/sources.list
@@ -125,24 +151,23 @@ apt-get --assume-yes clean ; error
 apt-get --assume-yes autoclean ; error
 apt-get --assume-yes update ; error
 
-# # Enable this once 21.04 reaches the end of its life.
-# # Write out a nice and compact sources list.
-# cat <<-EOF > /etc/apt/sources.list
-# 
-# deb https://old-releases.ubuntu.com/ubuntu/ groovy main restricted universe multiverse
-# deb https://old-releases.ubuntu.com/ubuntu/ groovy-updates main restricted universe multiverse
-# deb https://old-releases.ubuntu.com/ubuntu/ groovy-backports main restricted universe multiverse
-# deb https://old-releases.ubuntu.com/ubuntu/ groovy-security main restricted universe multiverse
-# 
-# # deb-src https://old-releases.ubuntu.com/ubuntu/ groovy main restricted universe multiverse
-# # deb-src https://old-releases.ubuntu.com/ubuntu/ groovy-updates main restricted universe multiverse
-# # deb-src https://old-releases.ubuntu.com/ubuntu/ groovy-backports main restricted universe multiverse
-# # deb-src https://old-releases.ubuntu.com/ubuntu/ groovy-security main restricted universe multiverse
-# 
-# EOF
-# 
-# # Some of the ubuntu archive servers appear to be missing files/packages..
-# printf "\n91.189.91.124 old-releases.ubuntu.com\n" >> /etc/hosts
+# Write out a nice and compact sources list.
+cat <<-EOF > /etc/apt/sources.list
+
+deb https://old-releases.ubuntu.com/ubuntu/ impish main restricted universe multiverse
+deb https://old-releases.ubuntu.com/ubuntu/ impish-updates main restricted universe multiverse
+deb https://old-releases.ubuntu.com/ubuntu/ impish-backports main restricted universe multiverse
+deb https://old-releases.ubuntu.com/ubuntu/ impish-security main restricted universe multiverse
+
+# deb-src https://old-releases.ubuntu.com/ubuntu/ impish main restricted universe multiverse
+# deb-src https://old-releases.ubuntu.com/ubuntu/ impish-updates main restricted universe multiverse
+# deb-src https://old-releases.ubuntu.com/ubuntu/ impish-backports main restricted universe multiverse
+# deb-src https://old-releases.ubuntu.com/ubuntu/ impish-security main restricted universe multiverse
+
+EOF
+
+# Some of the ubuntu archive servers appear to be missing files/packages..
+printf "\n91.189.91.124 old-releases.ubuntu.com\n" >> /etc/hosts
 
 # Update the package database.
 retry apt-get --assume-yes -o Dpkg::Options::="--force-confnew" update ; error
