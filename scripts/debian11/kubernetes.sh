@@ -53,7 +53,7 @@ EOF
 sudo rm /etc/containerd/config.toml
 retry apt-get --assume-yes update
 #retry apt-get --assume-yes  install containerd.io=1.2.13-2   docker-ce=5:19.03.11~3-0~debian-buster  docker-ce-cli=5:19.03.11~3-0~debian-buster  kubelet kubeadm kubectl nfs-common dnsutils
-retry apt-get --assume-yes  install containerd   nfs-common ncdu dnsutils
+retry apt-get --assume-yes  install containerd.io  nfs-common dnsutils
 retry apt-get --assume-yes  install kubernetes-cni
 retry apt-get --assume-yes  install kubelet
 retry apt-get --assume-yes  install kubeadm
@@ -94,7 +94,7 @@ sudo cp /home/vagrant/containerd_config.toml /etc/containerd/config.toml
 sudo mkdir -p /etc/containerd
 sudo systemctl restart containerd
 
-cat <<EOF | /etc/logrotate.d/rsyslog
+cat <<EOF |
 /var/log/syslog
 /var/log/mail.info
 /var/log/mail.warn
@@ -110,7 +110,6 @@ cat <<EOF | /etc/logrotate.d/rsyslog
 /var/log/messages
 {
 	rotate 4
-        size 5M
 	weekly
 	missingok
 	notifempty
@@ -119,31 +118,6 @@ cat <<EOF | /etc/logrotate.d/rsyslog
 	sharedscripts
 	postrotate
 		/usr/lib/rsyslog/rsyslog-rotate
-EOF
-
-cat << EOF| /etc/logratote.conf 
-
-# global options do not affect preceding include directives
-
-# rotate log files weekly
-weekly
-
-# keep 4 weeks worth of backlogs
-rotate 4
-
-# create new (empty) log files after rotating old ones
-create
-
-# use date as a suffix of the rotated file
-#dateext
-
-# uncomment this if you want your log files compressed
-#compress
-
-# packages drop log rotation information into this directory
-include /etc/logrotate.d
-
-# system-specific logs may also be configured here.
 EOF
 cat /etc/resolv.conf
 dig +short @8.8.8.8 k8s.gcr.io

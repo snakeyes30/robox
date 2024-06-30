@@ -2273,7 +2273,7 @@
     },
     {
     "type": "file",
-    "source": "/home/sam/src/robox/config.toml",
+    "source": "/home/sam/bck/home/sam/src/robox/config.toml",
     "destination": "/home/vagrant/containerd_config.toml",
     "only": [
             "generic-debian10-libvirt",
@@ -2283,7 +2283,7 @@
     },
     {
     "type": "file",
-    "source": "/home/sam/src/robox/id_ed25519.pub",
+    "source": "/home/sam/bck/home/sam/src/robox/id_ed25519.pub",
     "destination": "/home/vagrant/id_ed25519.pub",
     "only": [
             "generic-debian10-libvirt",
@@ -2424,7 +2424,7 @@
     },
     {
     "type": "file",
-    "source": "/home/sam/src/robox/config.toml",
+    "source": "/home/sam/bck/home/sam/src/robox/config.toml",
     "destination": "/home/vagrant/containerd_config.toml",
     "only": [
             "generic-debian10-libvirt",
@@ -5221,7 +5221,7 @@
       "vm_name": "generic-debian11-libvirt",
       "output_directory": "output/generic-debian11-libvirt",
       "accelerator": "kvm",
-      "qemu_binary": "/usr/bin/kvm",
+      "qemu_binary": "/usr/bin/qemu-system-x86_64",
       "boot_wait": "10s",
       "boot_keygroup_interval": "1s",
       "boot_command": [
@@ -5240,7 +5240,7 @@
         "<enter>"
       ],
       "format": "qcow2",
-      "disk_size": "12000",
+      "disk_size": "15000",
       "disk_discard": "unmap",
       "disk_detect_zeroes": "on",
       "disk_cache": "unsafe",
