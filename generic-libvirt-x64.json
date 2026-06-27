@@ -2292,9 +2292,8 @@
     "source": "/home/sam/bck/home/sam/src/robox/config.toml",
     "destination": "/home/vagrant/containerd_config.toml",
     "only": [
-            "generic-debian10-libvirt",
-            "generic-debian11-libvirt",
-            "generic-alpine315-libvirt"
+	    "generic-debian11-libvirt-x64",
+	    "generic-debian12-libvirt-x64"
           ]
     },
     {
@@ -2302,9 +2301,8 @@
     "source": "/home/sam/bck/home/sam/src/robox/id_ed25519.pub",
     "destination": "/home/vagrant/id_ed25519.pub",
     "only": [
-            "generic-debian10-libvirt",
-            "generic-alpine315-libvirt",
-            "generic-debian11-libvirt"
+	    "generic-debian11-libvirt-x64",
+	    "generic-debian12-libvirt-x64"
           ]
     },
     {
@@ -2437,16 +2435,6 @@
       "only": [
         "generic-alpine315-libvirt-x64"
       ]
-    },
-    {
-    "type": "file",
-    "source": "/home/sam/bck/home/sam/src/robox/config.toml",
-    "destination": "/home/vagrant/containerd_config.toml",
-    "only": [
-            "generic-debian10-libvirt",
-            "generic-debian11-libvirt",
-            "generic-alpine315-libvirt"
-          ]
     },
     {
       "type": "shell",
@@ -3170,6 +3158,7 @@
         "scripts/debian12/parallels.sh",
         "scripts/debian12/vmware.sh",
         "scripts/debian12/qemu.sh",
+        "scripts/debian12/kubernetes.sh",
         "scripts/debian12/cleanup.sh"
       ],
       "type": "shell",
@@ -7125,7 +7114,7 @@
         "<enter>"
       ],
       "format": "qcow2",
-      "disk_size": "131072",
+      "disk_size": "15000",
       "disk_discard": "unmap",
       "disk_detect_zeroes": "on",
       "disk_cache": "unsafe",
@@ -7133,12 +7122,12 @@
       "disk_compression": true,
       "disk_interface": "virtio-scsi",
       "net_device": "virtio-net",
-      "cpus": 2,
-      "memory": 2048,
+      "cpus": 4,
+      "memory": 4096,
       "http_directory": "http",
       "headless": true,
-      "iso_url": "https://cdimage.debian.org/cdimage/release/12.4.0/amd64/iso-cd/debian-12.4.0-amd64-netinst.iso",
-      "iso_checksum": "sha256:64d727dd5785ae5fcfd3ae8ffbede5f40cca96f1580aaa2820e8b99dae989d94",
+      "iso_url": "https://cdimage.debian.org/cdimage/release/12.10.0/amd64/iso-cd/debian-12.10.0-amd64-netinst.iso",
+      "iso_checksum": "sha256:ee8d8579128977d7dc39d48f43aec5ab06b7f09e1f40a9d98f2a9d149221704a",
       "ssh_username": "root",
       "ssh_password": "vagrant",
       "ssh_port": 22,

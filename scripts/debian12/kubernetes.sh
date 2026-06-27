@@ -1,132 +1,102 @@
 #!/bin/bash
 
+set -euo pipefail
+
+# Retry helper
 retry() {
   local COUNT=1
   local RESULT=0
   while [[ "${COUNT}" -le 10 ]]; do
-    [[ "${RESULT}" -ne 0 ]] && {
-      [ "`which tput 2> /dev/null`" != "" ] && tput setaf 1
-      echo -e "\n${*} failed... retrying ${COUNT} of 10.\n" >&2
-      [ "`which tput 2> /dev/null`" != "" ] && tput sgr0
-    }
-    "${@}" && { RESULT=0 && break; } || RESULT="${?}"
-    COUNT="$((COUNT + 1))"
-
-    # Increase the delay with each iteration.
-    DELAY="$((DELAY + 10))"
-    sleep $DELAY
+    "${@}" && break
+    RESULT=$?
+    echo "Command failed... retrying ${COUNT}/10." >&2
+    COUNT=$((COUNT + 1))
+    sleep $((COUNT * 2))
   done
-
-  [[ "${COUNT}" -gt 10 ]] && {
-    [ "`which tput 2> /dev/null`" != "" ] && tput setaf 1
-    echo -e "\nThe command failed 10 times.\n" >&2
-    [ "`which tput 2> /dev/null`" != "" ] && tput sgr0
-  }
-
   return "${RESULT}"
 }
 
+# ---------------------------------------
+# 1. Base packages
+# ---------------------------------------
+retry apt-get update
+retry apt-get install -y apt-transport-https ca-certificates curl gnupg2 software-properties-common lsb-release
 
-error() {
-        if [ $? -ne 0 ]; then
-                printf "\n\napt failed...\n\n";
-                exit 1
-        fi
-}
+# ---------------------------------------
+# 2. Docker repo (for containerd.io)
+# ---------------------------------------
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
+  | tee /etc/apt/sources.list.d/docker.list
 
+# ---------------------------------------
+# 3. Kubernetes repo
+# ---------------------------------------
+KUBE_VERSION=1.32
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v$KUBE_VERSION/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v$KUBE_VERSION/deb/ /" \
+  | tee /etc/apt/sources.list.d/kubernetes.list
 
-retry apt-get --assume-yes install \
-            apt-transport-https \
-                ca-certificates \
-                    curl \
-                        gnupg-agent \
-                            software-properties-common
- curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
- add-apt-repository \
-            "deb [arch=amd64] https://download.docker.com/linux/debian \
-               $(lsb_release -cs) \
-                  stable"
- sudo mkdir -p -m 755 /etc/apt/keyrings
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg # allow unprivileged APT programs to read this keyring
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+retry apt-get update
 
-sudo rm /etc/containerd/config.toml
-retry apt-get --assume-yes update
-#retry apt-get --assume-yes  install containerd.io=1.2.13-2   docker-ce=5:19.03.11~3-0~debian-buster  docker-ce-cli=5:19.03.11~3-0~debian-buster  kubelet kubeadm kubectl nfs-common dnsutils
-retry apt-get --assume-yes  install containerd  nfs-common dnsutils
-#retry apt-get --assume-yes  install kubernetes-cni
-retry apt-get --assume-yes  install kubelet
-retry apt-get --assume-yes  install kubeadm
-retry apt-get --assume-yes  install kubectl
-cat > /etc/docker/daemon.json <<EOF
-{
-  "exec-opts": ["native.cgroupdriver=systemd"],
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "100m"
-  },
-  "storage-driver": "overlay2"
-}
-EOF
+# ---------------------------------------
+# 4. Install core components
+# ---------------------------------------
+retry apt-get install -y containerd.io nfs-common dnsutils
+retry apt-get install -y kubelet kubeadm kubectl
+apt-mark hold kubelet kubeadm kubectl
 
-cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
+# ---------------------------------------
+# 5. Configure containerd (clean and modern)
+# ---------------------------------------
+mkdir -p /etc/containerd
+containerd config default | tee /etc/containerd/config.toml > /dev/null
+sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+sed -i '/\[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc\]/,/\[.*\]/ s/runtime_type =.*/runtime_type = "io.containerd.runc.v2"/' /etc/containerd/config.toml
+
+# ---------------------------------------
+# 6. Load required kernel modules
+# ---------------------------------------
+tee /etc/modules-load.d/containerd.conf <<EOF
 overlay
 br_netfilter
 EOF
+modprobe overlay
+modprobe br_netfilter
 
-sudo modprobe overlay
-sudo modprobe br_netfilter
-
-# Setup required sysctl params, these persist across reboots.
-cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.ipv4.ip_forward                 = 1
+# ---------------------------------------
+# 7. Configure sysctl for Kubernetes
+# ---------------------------------------
+tee /etc/sysctl.d/99-kubernetes-cri.conf <<EOF
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
 net.bridge.bridge-nf-call-ip6tables = 1
 EOF
-
 echo "fs.inotify.max_user_instances=1048" >> /etc/sysctl.d/40-max-user-watches.conf
-echo "SystemMaxUse=100M" >> /etc/systemd/journald.conf
-sudo systemctl restart systemd-journald
-# Apply sysctl params without reboot
-sudo sysctl --system
+sysctl --system
 
-sudo cp /home/vagrant/containerd_config.toml /etc/containerd/config.toml
-sudo mkdir -p /etc/containerd
-sudo systemctl restart containerd
+# ---------------------------------------
+# 8. Restart containerd
+# ---------------------------------------
+systemctl restart containerd
 
-cat <<EOF |
-/var/log/syslog
-/var/log/mail.info
-/var/log/mail.warn
-/var/log/mail.err
-/var/log/mail.log
-/var/log/daemon.log
-/var/log/kern.log
-/var/log/auth.log
-/var/log/user.log
-/var/log/lpr.log
-/var/log/cron.log
-/var/log/debug
-/var/log/messages
-{
-	rotate 4
-	weekly
-	missingok
-	notifempty
-	compress
-	delaycompress
-	sharedscripts
-	postrotate
-		/usr/lib/rsyslog/rsyslog-rotate
-EOF
-cat /etc/resolv.conf
-dig +short @8.8.8.8 k8s.gcr.io
-sudo kubeadm config images pull -v=10
+# ---------------------------------------
+# 9. Ensure iptables uses legacy
+# ---------------------------------------
 update-alternatives --set iptables /usr/sbin/iptables-legacy
 update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
-#sudo kubeadm config images pull -v=10 2>&1
-sudo echo "SystemMaxUse=100M" >> /etc/systemd/journald.conf
-sudo systemctl restart systemd-journald
-#sudo systemctl restart  rsyslog.service
+
+# ---------------------------------------
+# 10. Optional log rate limiting
+# ---------------------------------------
+echo "SystemMaxUse=100M" >> /etc/systemd/journald.conf
+systemctl restart systemd-journald
+
+# ---------------------------------------
+# 11. Optional test of image pull & DNS
+# ---------------------------------------
+dig +short @1.1.1.1 k8s.gcr.io || true
+kubeadm config images pull -v=10 || true
 
